@@ -1,6 +1,6 @@
 # lc-leaderboard-bot
 
-Companion Discord bot for CFA LC leaderboard
+Companion Discord bot for LC leaderboard
 
 Used to register/remove users.
 
