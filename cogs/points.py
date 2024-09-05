@@ -28,7 +28,6 @@ class AdminPoints(commands.Cog):
         points: int,
     ):
         await interaction.response.defer()
-
         if interaction.user.id in ADMINS:
             if not discord_user and not leetcode_user:
                 await interaction.followup.send(

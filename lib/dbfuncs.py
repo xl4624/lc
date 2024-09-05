@@ -139,3 +139,16 @@ def add_points(discord_user, leetcode_user, points):
     except Exception as e:
         print(e)
         return (False, e)
+
+
+def add_admin(discord_id):
+    try:
+        cursor.execute(
+            "INSERT INTO admins discord_id VALUES (%s);",
+            (discord_id),
+        )
+        connection.commit()
+        return True
+    except Exception as e:
+        print(e)
+        return False
