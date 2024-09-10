@@ -146,6 +146,10 @@ def CLEAR_ALL_POINTS():
     rows = cursor.fetchall()
     for row in rows:
         cursor.execute(f"UPDATE points SET points = 0 WHERE id = {row[0]};")
+    cursor.execute("DELETE FROM reset;")
+    cursor.execute("INSERT INTO reset (last_reset) VALUES (NOW());")
+
+    # cursor.execute("UPDATE reset SET last_rest = NOW() WHERE id = 1;")
     connection.commit()
     return True
 

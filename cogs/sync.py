@@ -16,7 +16,7 @@ class Sync(commands.Cog):
     # move into main if possible
     @commands.command()
     async def sync(self, ctx) -> None:
-        # check if user ids are me anurag or jubayer
+        print(ctx.message.author.id)
         if ctx.message.author.id in ADMINS:
             # update status
             activity = discord.Activity(
