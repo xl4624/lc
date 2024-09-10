@@ -141,6 +141,15 @@ def add_points(discord_user, leetcode_user, points):
         return (False, e)
 
 
+def CLEAR_ALL_POINTS():
+    cursor.execute("SELECT id FROM points;")
+    rows = cursor.fetchall()
+    for row in rows:
+        cursor.execute(f"UPDATE points SET points = 0 WHERE id = {row[0]};")
+    connection.commit()
+    return True
+
+
 def add_admin(discord_id):
     try:
         cursor.execute(
