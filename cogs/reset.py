@@ -20,7 +20,7 @@ class AdminReset(commands.Cog):
     @app_commands.describe(interval="Choose a reset interval")
     @app_commands.describe(confirmation="type CONFIRM to confirm a RESET")
     @app_commands.choices(
-        confirmation=[
+        interval=[
             app_commands.Choice(name="Weekly", value="7"),
             app_commands.Choice(name="Biweekly", value="14"),
             app_commands.Choice(name="Monthly", value="30"),
@@ -30,7 +30,7 @@ class AdminReset(commands.Cog):
         self,
         interaction: discord.Interaction,
         confirmation: typing.Optional[str],
-        interval: typing.Optional[int],
+        interval: typing.Optional[app_commands.Choice[str]],
     ):
         await interaction.response.defer()
         if interaction.user.id in ADMINS:
@@ -39,7 +39,7 @@ class AdminReset(commands.Cog):
                     "Please type CONFIRM to confirm a RESET"
                 )
                 return
-            dbfuncs.reset_points(interval)
+            dbfuncs.CLEAR_ALL_POINTS(int(interval.value) if interval else None)
             await interaction.followup.send(
                 f"Leaderboard has been reset for the interval of {interval} days"
             )

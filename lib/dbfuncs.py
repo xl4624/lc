@@ -141,16 +141,25 @@ def add_points(discord_user, leetcode_user, points):
         return (False, e)
 
 
-def CLEAR_ALL_POINTS():
-    cursor.execute("SELECT id FROM points;")
-    rows = cursor.fetchall()
-    for row in rows:
-        cursor.execute(f"UPDATE points SET points = 0 WHERE id = {row[0]};")
-    cursor.execute("DELETE FROM reset;")
-    cursor.execute("INSERT INTO reset (last_reset) VALUES (NOW());")
+def CLEAR_ALL_POINTS(reset_interval=None, wins=None):
+    try:
+        cursor.execute("SELECT id FROM points;")
+        rows = cursor.fetchall()
+        for row in rows:
+            if wins:
+                cursor.execute(f"UPDATE points SET wins = 0 WHERE id = {row[0]};")
+            cursor.execute(f"UPDATE points SET points = 0 WHERE id = {row[0]};")
+        cursor.execute("DELETE FROM reset;")
+        cursor.execute("INSERT INTO reset (last_reset) VALUES (NOW());")
 
-    # cursor.execute("UPDATE reset SET last_rest = NOW() WHERE id = 1;")
-    connection.commit()
+        if reset_interval:
+            cursor.execute(f"UPDATE reset SET reset_interval = {reset_interval};")
+
+        cursor.execute("UPDATE reset SET last_reset = NOW();")
+        connection.commit()
+    except Exception as e:
+        print(e)
+        return False
     return True
 
 
