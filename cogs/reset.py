@@ -35,9 +35,7 @@ class AdminReset(commands.Cog):
         await interaction.response.defer()
         if interaction.user.id in ADMINS:
             if confirmation != "CONFIRM":
-                await interaction.followup.send(
-                    "Please type CONFIRM to confirm a RESET"
-                )
+                await interaction.followup.send("No confirmation, reset cancelled")
                 return
             dbfuncs.CLEAR_ALL_POINTS(int(interval.value) if interval else None)
             await interaction.followup.send(

@@ -27,9 +27,7 @@ class Adminclear(commands.Cog):
         await interaction.response.defer()
         if interaction.user.id in ADMINS:
             if confirmation != "CONFIRM":
-                await interaction.followup.send(
-                    "Please type CONFIRM to confirm a clear"
-                )
+                await interaction.followup.send("No confirmation, clear cancelled")
                 return
             else:
                 dbfuncs.CLEAR_ALL_POINTS(wins=True)
