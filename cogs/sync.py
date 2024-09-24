@@ -26,7 +26,10 @@ class Sync(commands.Cog):
             # change nickname
             print("Changed name and status")
             # sync commands
-            fmt = await ctx.bot.tree.sync()
+            # client = self.bot
+            print(ctx.guild.id)
+            print("Syncing commands")
+            fmt = await self.bot.tree.sync()
             commands = len(fmt)
             print("Synced commands")
             user = self.bot.get_user(ctx.message.author.id)

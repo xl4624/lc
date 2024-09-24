@@ -15,15 +15,15 @@ class ClearPoints(commands.Cog):
         print("Clear Points cog loaded")
 
     @app_commands.command(
-        name="zclear", description="Clear EVERYONE's points (ADMIN ONLY)"
+        name="zclear", description="Clear EVERYONE's points AND wins (ADMIN ONLY)"
     )
-    @app_commands.describe(CONFIRM="Type 'CONFIRM' to clear all points")
+    @app_commands.describe(confirm="Type 'CONFIRM' to clear all points")
     async def clearpoints(
-        self, interaction: discord.Interaction, CONFIRM: typing.Optional[str]
+        self, interaction: discord.Interaction, confirm: typing.Optional[str]
     ):
         await interaction.response.defer()
         if interaction.user.id in ADMINS:
-            if CONFIRM == "CONFIRM":
+            if confirm == "CONFIRM":
                 dbfuncs.CLEAR_ALL_POINTS()
                 await interaction.followup.send("Cleared all points")
             else:
