@@ -23,7 +23,7 @@ class SelfRemove(commands.Cog):
         if confirmation != "CONFIRM":
             await interaction.followup.send("Removal cancelled.")
             return
-        discord_user = interaction.user.global_name
+        discord_user = interaction.user.name
         if not dbfuncs.check_discord_user(discord_user):
             out = f"Discord user {discord_user} not registered"
             await interaction.followup.send(out)
