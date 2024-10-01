@@ -73,7 +73,7 @@ def add_user(discord_id, leetcode_username):
         )
         user_id = cursor.fetchall()[0][0]
         cursor.execute(
-            "INSERT INTO points (user_id, points) VALUES (%s, 0);", (user_id,)
+            "INSERT INTO points (user_id, points, wins) VALUES (%s, 0, 0);", (user_id,)
         )
         connection.commit()
         return (True, "")

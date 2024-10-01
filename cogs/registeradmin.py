@@ -18,10 +18,10 @@ class AdminRegisterAdmin(commands.Cog):
     )
     @app_commands.describe(discord_id="discord ID to register")
     async def adminregisteradmin(
-        self, interaction: discord.Interaction, discord_id: int
+        self, interaction: discord.Interaction, discord_id: str
     ):
         await interaction.response.defer()
-
+        discord_id = int(discord_id)
         if interaction.user.id in ADMINS:
             # insert discord_id to admin table
             if dbfuncs.add_admin(discord_id):
