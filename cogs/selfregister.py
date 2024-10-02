@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
 from discord import app_commands
+import requests
 import lib.dbfuncs as dbfuncs
 
 
@@ -36,7 +37,15 @@ class SelfRegister(commands.Cog):
                     out += f" with Discord: {dc_user}"
                 await interaction.followup.send(out)
                 return
-
+            
+            # check if user actually entered their leetcode username
+            url = "https://server.rakibshahid.com/api/leetcode_ac"
+            headers = {"leetcode-username": leetcode_user}
+            response = requests.get(url, headers=headers)
+            if response.status_code != 200 or response.json().get("count") == 0:
+                await interaction.followup.send(f"Invalid LeetCode username: {leetcode_user}! Register with your **LeetCode** username.")
+                return
+            
             dbfuncs.add_user(interaction.user.name, leetcode_user)
             await interaction.followup.send(
                 f"Registered {interaction.user.name} as {leetcode_user}"

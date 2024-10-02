@@ -60,7 +60,7 @@ class TopTen(commands.Cog):
         points = []
         for i in range(10):
             leetcode_users.append(data[i]['username'])
-            discord_users.append(data[i]['discord_username'])
+            discord_users.append(f"{data[i]['discord_username']}")
             points.append(data[i]['points'])
         embed.add_field(name=f"{discord_emoji} Discord User", value="\n".join(discord_users), inline=True)
         embed.add_field(name=f"{leetcode_emoji} Leetcode User", value="\n".join(leetcode_users), inline=True)

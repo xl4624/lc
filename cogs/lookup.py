@@ -5,7 +5,6 @@ import lib.dbfuncs as dbfuncs
 import lib.emojis as emojis
 import requests
 import datetime
-import time
 import traceback
 
 
@@ -62,7 +61,7 @@ class Lookup(commands.Cog):
                         for i in range(min(5,json["count"])):
                             timestamp = (json['submission'][i]['timestamp'])
                             language = json['submission'][i]['lang'].lower()
-                            if language == "cpp":
+                            if "c++" in language:
                                 emoji = emojimap["cpp"]
                             elif language == "c":
                                 emoji = emojimap["c"]
