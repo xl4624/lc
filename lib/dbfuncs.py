@@ -144,3 +144,19 @@ def add_admin(discord_id):
     except Exception as e:
         print(e)
         return False
+
+def get_user_points(discord_user):
+    try:
+        result = get_leetcode_from_discord(discord_user)
+        if result:
+            leetcode_username = result
+        cursor.execute(
+            "SELECT points FROM points WHERE user_id = (SELECT id FROM users WHERE LOWER(username) = LOWER(%s));",
+            (leetcode_username,),
+        )
+        record = cursor.fetchall()
+        return record[0][0]
+    except Exception as e:
+        print(e)
+        return False
+    
