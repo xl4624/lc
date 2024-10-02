@@ -22,8 +22,10 @@ class Lookup(commands.Cog):
     async def lookup(self, interaction: discord.Interaction, username: str):
         await interaction.response.defer()
         embed = discord.Embed(title=f"User Lookup - {username}", timestamp=datetime.datetime.now())
+        sad = self.bot.get_emoji(1110418413920206868)
         embed.set_footer(text=f"Requested by {interaction.user.name}")
-        description = ''
+        description = f'User {username} not found {sad if sad else ":cry:"}'
+        embed.set_image(url="https://media1.tenor.com/m/lxJgp-a8MrgAAAAd/laeppa-vika-half-life-alyx.gif")
         urls = ["https://server.rakibshahid.com/api/discord_lookup", "https://server.rakibshahid.com/api/leetcode_lookup"]
         header_titles = ["discord-username", "leetcode-username"]
         leetcode_emoji = self.bot.get_emoji(1290903612351844464)
@@ -43,13 +45,13 @@ class Lookup(commands.Cog):
                     # format global rank with commas
                     global_ranking = "{:,}".format(data['ranking'])
                     description += f":earth_americas: **Global LeetCode Rank**: {global_ranking}\n"
-                    embed.description = description
+                    
                     embed.set_image(url=data['avatar'])
                         
                     break
             except Exception as e:
                 print(e)
-        
+        embed.description = description
 
         
         
