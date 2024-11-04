@@ -79,8 +79,15 @@ class Lookup(commands.Cog):
                                 emoji = emojimap["py"]
                             else:
                                 emoji = ""
-                            
-                            leetcode_ac.append(f"{emoji} {json['submission'][i]['title']} - <t:{timestamp}:R>")
+                            difficulty = dbfuncs.get_points(problem_slug=json['submission'][i]['titleSlug'])
+                            difficulty_emoji = ''
+                            if difficulty == 1:
+                                difficulty_emoji = ":green_square:"
+                            elif difficulty == 3:
+                                difficulty_emoji = ":orange_square:"
+                            elif difficulty == 10:
+                                difficulty_emoji = ":red_square:"
+                            leetcode_ac.append(f"{emoji}{difficulty_emoji} {json['submission'][i]['title']} - <t:{timestamp}:R>")
                     if leetcode_ac:
                         leetcode_ac_string = '\n'.join(leetcode_ac)
                         description += f":white_check_mark: **{len(leetcode_ac)} Recent LeetCode Accepted Submissions**:\n{leetcode_ac_string}\n"

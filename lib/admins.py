@@ -17,5 +17,5 @@ def getAdmins(DB_IP, DB_NAME, DB_USER, DB_PASS):
     return [int(row[0]) for row in rows]
 
 
-ADMINS = getAdmins(config.DB_IP, config.DB_NAME, config.DB_USER, config.DB_PASS)
+# ADMINS = getAdmins(config.DB_IP, config.DB_NAME, config.DB_USER, config.DB_PASS)
 # print(ADMINS)

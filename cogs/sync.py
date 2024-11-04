@@ -1,7 +1,7 @@
 # sync all commands2
 import discord
 from discord.ext import commands
-from lib.admins import ADMINS
+from lib.admins import getAdmins
 
 
 class Sync(commands.Cog):
@@ -17,10 +17,10 @@ class Sync(commands.Cog):
     @commands.command()
     async def sync(self, ctx) -> None:
         print(ctx.message.author.id)
-        if ctx.message.author.id in ADMINS:
+        if ctx.message.author.id in getAdmins():
             # update status
             activity = discord.Activity(
-                type=discord.ActivityType.listening, name=f" /help "
+                type=discord.ActivityType.watching, name=f" NeetCode videos"
             )
             await self.bot.change_presence(activity=activity)
             # change nickname

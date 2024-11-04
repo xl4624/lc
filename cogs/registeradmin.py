@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands
 from discord import app_commands
-from lib.admins import ADMINS
+from lib.admins import getAdmins
 import lib.dbfuncs as dbfuncs
 
 
@@ -22,7 +22,7 @@ class AdminRegisterAdmin(commands.Cog):
     ):
         await interaction.response.defer()
         discord_id = int(discord_id)
-        if interaction.user.id in ADMINS:
+        if interaction.user.id in getAdmins():
             # insert discord_id to admin table
             if dbfuncs.add_admin(discord_id):
                 await interaction.followup.send(f"Registered {discord_id} as new admin")

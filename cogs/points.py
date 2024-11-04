@@ -2,7 +2,7 @@ import typing
 import discord
 from discord.ext import commands
 from discord import app_commands
-from lib.admins import ADMINS
+from lib.admins import getAdmins
 import lib.dbfuncs as dbfuncs
 
 
@@ -28,7 +28,7 @@ class AdminPoints(commands.Cog):
         points: int,
     ):
         await interaction.response.defer()
-        if interaction.user.id in ADMINS:
+        if interaction.user.id in getAdmins():
             if not discord_user and not leetcode_user:
                 await interaction.followup.send(
                     "Provide a valid user (leetcode or discord)"

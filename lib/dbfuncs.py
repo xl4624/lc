@@ -15,7 +15,6 @@ connection = psycopg2.connect(
 
 cursor = connection.cursor()
 
-
 def check_leetcode_user(leetcode_username):
     cursor.execute(
         "SELECT * from account_owner WHERE LOWER(leetcode_username) = LOWER(%s);",
@@ -160,3 +159,22 @@ def get_user_points(discord_user):
         print(e)
         return False
     
+def get_points(conn=connection,problem_slug=None):
+    if problem_slug is None:
+        return -1
+    cur = conn.cursor()
+    query = f"SELECT points FROM difficulty WHERE titleslug = '{problem_slug}';"
+    cur.execute(query)
+    result = cur.fetchall()
+    if len(result) > 0:
+        return result[0][0]
+
+def get_last_reset(conn=connection):
+    cur = conn.cursor()
+    # get the last reset and the reset interval from the reset table
+    cur.execute("SELECT last_reset, reset_interval FROM reset;")
+    result = cur.fetchall()
+    if len(result) > 0:
+        return result
+    else:
+        return None
