@@ -1,7 +1,6 @@
 import discord
 from discord.ext import commands
 from discord import app_commands
-from lib.admins import getAdmins
 import lib.dbfuncs as dbfuncs
 
 
@@ -17,8 +16,9 @@ class AdminRemove(commands.Cog):
     @app_commands.describe(discord_user="discord user to remove")
     async def adminremove(self, interaction: discord.Interaction, discord_user: str):
         await interaction.response.defer()
-
-        if interaction.user.id in getAdmins():
+        admins = dbfuncs.get_admins()
+        admins = set([admin[0] for admin in admins])
+        if interaction.user.id in admins:
             if not dbfuncs.check_discord_user(discord_user):
                 out = f"Discord user {discord_user} not registered"
                 await interaction.followup.send(out)

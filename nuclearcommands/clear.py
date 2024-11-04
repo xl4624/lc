@@ -2,7 +2,6 @@ import typing
 import discord
 from discord.ext import commands
 from discord import app_commands
-from lib.admins import getAdmins
 import lib.dbfuncs as dbfuncs
 
 
@@ -25,7 +24,9 @@ class Adminclear(commands.Cog):
         confirmation: typing.Optional[str],
     ):
         await interaction.response.defer()
-        if interaction.user.id in getAdmins():
+        admins = dbfuncs.get_admins()
+        admins = set([admin[0] for admin in admins])
+        if interaction.user.id in admins:
             if confirmation != "CONFIRM":
                 await interaction.followup.send("No confirmation, clear cancelled")
                 return

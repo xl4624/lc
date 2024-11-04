@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands
 from discord import app_commands
-from lib.admins import getAdmins
+
 import lib.dbfuncs as dbfuncs
 
 
@@ -20,8 +20,9 @@ class AdminRegister(commands.Cog):
         self, interaction: discord.Interaction, discord_user: str, leetcode_user: str
     ):
         await interaction.response.defer()
-
-        if interaction.user.id in getAdmins():
+        admins = dbfuncs.get_admins()
+        admins = set([admin[0] for admin in admins])
+        if interaction.user.id in admins:
             if dbfuncs.check_discord_user(discord_user):
                 out = f"Discord user {discord_user} already registered"
                 lc_user = dbfuncs.get_leetcode_from_discord(discord_user)

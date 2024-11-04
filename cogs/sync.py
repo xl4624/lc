@@ -1,8 +1,7 @@
 # sync all commands2
 import discord
 from discord.ext import commands
-from lib.admins import getAdmins
-
+import lib.dbfuncs as dbfuncs
 
 class Sync(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -17,7 +16,10 @@ class Sync(commands.Cog):
     @commands.command()
     async def sync(self, ctx) -> None:
         print(ctx.message.author.id)
-        if ctx.message.author.id in getAdmins():
+        admins = dbfuncs.get_admins()
+        admins = set([admin[0] for admin in admins])
+        if ctx.message.author.id in admins:
+            print("Admin detected")
             # update status
             activity = discord.Activity(
                 type=discord.ActivityType.watching, name=f" NeetCode videos"

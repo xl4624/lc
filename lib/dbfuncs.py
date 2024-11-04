@@ -178,3 +178,12 @@ def get_last_reset(conn=connection):
         return result
     else:
         return None
+    
+def get_admins(conn=connection):
+    cur = conn.cursor()
+    cur.execute("SELECT discord_id FROM admins;")
+    result = cur.fetchall()
+    if len(result) > 0:
+        return result
+    else:
+        return None
