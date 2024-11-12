@@ -1,7 +1,8 @@
 import psycopg2
 import os
+import time
 import sys
-
+import traceback
 sys.path.append(os.path.abspath("../"))
 import config
 
@@ -185,5 +186,27 @@ def get_admins(conn=connection):
     result = cur.fetchall()
     if len(result) > 0:
         return result
+    else:
+        return None
+    
+def get_win_history(conn=connection,original_rows = False):
+    cur = conn.cursor()
+    cur.execute("SELECT username, timestamp FROM win_history JOIN users ON win_history.user_id = users.id LIMIT 10;")
+   
+    result = cur.fetchall()
+    if len(result) > 0:
+        if original_rows:
+            return result
+        data = None
+        try:
+            data = [list(row) for row in result]
+            for row in data:
+                row[1] = time.mktime(row[1].timetuple())
+                row.append(get_discord_from_leetcode(row[0]))
+                row[0],row[1],row[2] = row[2],row[0],row[1]
+        except Exception as e:
+            traceback.print_exc()
+            print(e)
+        return data
     else:
         return None

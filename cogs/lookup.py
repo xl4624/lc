@@ -79,7 +79,11 @@ class Lookup(commands.Cog):
                                 emoji = emojimap["py"]
                             else:
                                 emoji = ""
-                            difficulty = dbfuncs.get_points(problem_slug=json['submission'][i]['titleSlug'])
+                            # print(json['submission'][i]['titleSlug'])
+                            try: # catch odd error
+                                difficulty = dbfuncs.get_points(problem_slug=json['submission'][i]['titleSlug'])
+                            except:
+                                difficulty = 0
                             difficulty_emoji = ''
                             if difficulty == 1:
                                 difficulty_emoji = ":green_square:"
