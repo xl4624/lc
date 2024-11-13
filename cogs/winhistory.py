@@ -26,20 +26,24 @@ class WinHistory(commands.Cog):
             # url = 'https://server.rakibshahid.com/leaderboard'
             # response = requests.get(url)
             # data = response.json()
-            embed = self.create_detailed_embed(data, interaction.user.name)
+            if data is None:
+                embed = discord.Embed(title="No Winners Yet", description="No winners have been recorded yet.", timestamp=datetime.datetime.now())
+                await interaction.followup.send(embed=embed)
+            else:
+                embed = self.create_detailed_embed(data, interaction.user.name)
 
-            view = discord.ui.View()
-            toggle_button = discord.ui.Button(label="Toggle View", style=discord.ButtonStyle.primary)
-            view.add_item(toggle_button)
+                view = discord.ui.View()
+                toggle_button = discord.ui.Button(label="Toggle View", style=discord.ButtonStyle.primary)
+                view.add_item(toggle_button)
 
-            message = await interaction.followup.send(embed=embed, view=view)
+                message = await interaction.followup.send(embed=embed, view=view)
 
-            async def button_callback(interaction: discord.Interaction):
-                self.is_mobile_view = not self.is_mobile_view
-                new_embed = self.create_mobile_embed(data, interaction.user.name) if self.is_mobile_view else self.create_detailed_embed(data, interaction.user.name)
-                await interaction.response.edit_message(embed=new_embed)
+                async def button_callback(interaction: discord.Interaction):
+                    self.is_mobile_view = not self.is_mobile_view
+                    new_embed = self.create_mobile_embed(data, interaction.user.name) if self.is_mobile_view else self.create_detailed_embed(data, interaction.user.name)
+                    await interaction.response.edit_message(embed=new_embed)
 
-            toggle_button.callback = button_callback
+                toggle_button.callback = button_callback
             
         except Exception as e:
             traceback.print_exc()
