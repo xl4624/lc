@@ -1,4 +1,5 @@
 import psycopg2
+from functools import wraps
 import os
 import time
 import sys
@@ -6,59 +7,70 @@ import traceback
 sys.path.append(os.path.abspath("../"))
 import config
 
-connection = psycopg2.connect(
-    database=config.DB_NAME,
-    user=config.DB_USER,
-    password=config.DB_PASS,
-    host=config.DB_IP,
-    port=5432,
-)
 
-cursor = connection.cursor()
+class DBConnection:
+    def __init__(self):
+        self.connection = psycopg2.connect(
+            database=config.DB_NAME,
+            user=config.DB_USER,
+            password=config.DB_PASS,
+            host=config.DB_IP,
+            port=5432,
+        )
+        self.cursor = self.connection.cursor()
 
-def check_leetcode_user(leetcode_username):
+    def close(self):
+        self.cursor.close()
+        self.connection.close()
+
+
+def with_db(func):
+    """Decorator to handle database connection and cursor."""
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        conn = DBConnection()
+        try:
+            result = func(conn.cursor, *args, **kwargs)
+            conn.connection.commit()
+            return result
+        except Exception as e:
+            print(traceback.format_exc())
+            conn.connection.rollback()
+            raise e
+        finally:
+            conn.close()
+    return wrapper
+
+@with_db
+def check_leetcode_user(cursor, leetcode_username):
     cursor.execute(
-        "SELECT * from account_owner WHERE LOWER(leetcode_username) = LOWER(%s);",
+        "SELECT * FROM account_owner WHERE LOWER(leetcode_username) = LOWER(%s);",
         (leetcode_username,),
     )
-    record = cursor.fetchall()
-
-    return record
+    return cursor.fetchall()
 
 
-def check_discord_user(discord_id):
+@with_db
+def check_discord_user(cursor, discord_id):
     cursor.execute(
-        "SELECT * from account_owner WHERE LOWER(discord_username) = LOWER(%s);",
+        "SELECT * FROM account_owner WHERE LOWER(discord_username) = LOWER(%s);",
         (discord_id,),
     )
-    record = cursor.fetchall()
-
-    return record
+    return cursor.fetchall()
 
 
-def get_leetcode_from_discord(discord_username):
+@with_db
+def get_leetcode_from_discord(cursor, discord_username):
     cursor.execute(
-        "SELECT leetcode_username from account_owner WHERE LOWER(discord_username) = LOWER(%s);",
+        "SELECT leetcode_username FROM account_owner WHERE LOWER(discord_username) = LOWER(%s);",
         (discord_username,),
     )
     record = cursor.fetchall()
-    if len(record) == 0:
-        return False
-    return record[0][0]
+    return record[0][0] if record else None
 
 
-def get_discord_from_leetcode(leetcode_username):
-    cursor.execute(
-        "SELECT discord_username from account_owner WHERE LOWER(leetcode_username) = LOWER(%s);",
-        (leetcode_username,),
-    )
-    record = cursor.fetchall()
-    if len(record) == 0:
-        return False
-    return record[0][0]
-
-
-def add_user(discord_id, leetcode_username):
+@with_db
+def add_user(cursor, discord_id, leetcode_username):
     try:
         cursor.execute(
             "INSERT INTO account_owner (discord_username, leetcode_username) VALUES (%s, %s);",
@@ -68,27 +80,26 @@ def add_user(discord_id, leetcode_username):
             "INSERT INTO users (username) VALUES (LOWER(%s));", (leetcode_username,)
         )
         cursor.execute(
-            "SELECT id from users WHERE LOWER(username) = LOWER(%s);",
+            "SELECT id FROM users WHERE LOWER(username) = LOWER(%s);",
             (leetcode_username,),
         )
-        user_id = cursor.fetchall()[0][0]
+        user_id = cursor.fetchone()[0]
         cursor.execute(
             "INSERT INTO points (user_id, points, wins) VALUES (%s, 0, 0);", (user_id,)
         )
-        connection.commit()
-        return (True, "")
+        return True, ""
     except Exception as e:
-        print(e)
-        return (False, e)
+        return False, str(e)
 
 
-def remove_user(discord_id):
+@with_db
+def remove_user(cursor, discord_id):
     try:
         cursor.execute(
             "SELECT leetcode_username FROM account_owner WHERE LOWER(discord_username) = LOWER(%s);",
             (discord_id,),
         )
-        leetcode_username = cursor.fetchall()[0][0]
+        leetcode_username = cursor.fetchone()[0]
         cursor.execute(
             "DELETE FROM last_completed WHERE user_id = (SELECT id FROM users WHERE LOWER(username) = LOWER(%s));",
             (leetcode_username,),
@@ -109,104 +120,89 @@ def remove_user(discord_id):
             "DELETE FROM account_owner WHERE LOWER(discord_username) = LOWER(%s);",
             (discord_id,),
         )
-        connection.commit()
-        return (True, "")
+        return True, ""
     except Exception as e:
-        print(e)
-        return (False, e)
+        return False, str(e)
 
 
-def add_points(discord_user, leetcode_user, points):
+@with_db
+def add_points(cursor, discord_user, leetcode_user, points):
     try:
-        if discord_user:
-            result = get_leetcode_from_discord(discord_user)
-            if result:
-                leetcode_username = result
-        else:
-            leetcode_username = leetcode_user
-        statement = f"UPDATE points SET points = points + {points} WHERE user_id = (SELECT id FROM users WHERE LOWER(username) = LOWER(%s));"
-        cursor.execute(statement, (leetcode_username,))
-        connection.commit()
-        return (True, "")
+        leetcode_username = (
+            get_leetcode_from_discord(discord_user) if discord_user else leetcode_user
+        )
+        cursor.execute(
+            "UPDATE points SET points = points + %s WHERE user_id = (SELECT id FROM users WHERE LOWER(username) = LOWER(%s));",
+            (points, leetcode_username),
+        )
+        return True, ""
     except Exception as e:
-        print(e)
-        return (False, e)
+        return False, str(e)
 
 
-def add_admin(discord_id):
+@with_db
+def get_user_points(cursor, discord_user):
+    try:
+        leetcode_username = get_leetcode_from_discord(discord_user)
+        cursor.execute(
+            "SELECT points FROM points WHERE user_id = (SELECT id FROM users WHERE LOWER(username) = LOWER(%s));",
+            (leetcode_username,),
+        )
+        return cursor.fetchone()[0]
+    except Exception as e:
+        return None
+
+
+@with_db
+def get_win_history(cursor, original_rows=False):
+    cursor.execute(
+        "SELECT username, timestamp FROM win_history JOIN users ON win_history.user_id = users.id LIMIT 10;"
+    )
+    result = cursor.fetchall()
+    if original_rows:
+        return result
+    data = [
+        {
+            "username": row[0],
+            "timestamp": time.mktime(row[1].timetuple()),
+        }
+        for row in result
+    ]
+    return data
+
+@with_db
+def get_points(cursor, problem_slug=None):
+    if not problem_slug:
+        return -1
+    cursor.execute(
+        "SELECT points FROM difficulty WHERE titleslug = %s;",
+        (problem_slug,),
+    )
+    result = cursor.fetchall()
+    return result[0][0] if result else None
+
+
+@with_db
+def get_last_reset(cursor):
+    cursor.execute("SELECT last_reset, reset_interval FROM reset;")
+    result = cursor.fetchall()
+    return result if result else None
+
+
+@with_db
+def get_admins(cursor):
+    cursor.execute("SELECT discord_id FROM admins;")
+    result = cursor.fetchall()
+    return [row[0] for row in result] if result else []
+
+
+@with_db
+def add_admin(cursor, discord_id):
     try:
         cursor.execute(
             "INSERT INTO admins (discord_id) VALUES (%s);",
             (discord_id,),
         )
-        connection.commit()
         return True
     except Exception as e:
-        print(e)
-        return False
-
-def get_user_points(discord_user):
-    try:
-        result = get_leetcode_from_discord(discord_user)
-        if result:
-            leetcode_username = result
-        cursor.execute(
-            "SELECT points FROM points WHERE user_id = (SELECT id FROM users WHERE LOWER(username) = LOWER(%s));",
-            (leetcode_username,),
-        )
-        record = cursor.fetchall()
-        return record[0][0]
-    except Exception as e:
-        print(e)
-        return False
-    
-def get_points(conn=connection,problem_slug=None):
-    if problem_slug is None:
-        return -1
-    cur = conn.cursor()
-    query = f"SELECT points FROM difficulty WHERE titleslug = '{problem_slug}';"
-    cur.execute(query)
-    result = cur.fetchall()
-    if len(result) > 0:
-        return result[0][0]
-
-def get_last_reset(conn=connection):
-    cur = conn.cursor()
-    # get the last reset and the reset interval from the reset table
-    cur.execute("SELECT last_reset, reset_interval FROM reset;")
-    result = cur.fetchall()
-    if len(result) > 0:
-        return result
-    else:
-        return None
-    
-def get_admins(conn=connection):
-    cur = conn.cursor()
-    cur.execute("SELECT discord_id FROM admins;")
-    result = cur.fetchall()
-    if len(result) > 0:
-        return result
-    else:
-        return None
-    
-def get_win_history(conn=connection,original_rows = False):
-    cur = conn.cursor()
-    cur.execute("SELECT username, timestamp FROM win_history JOIN users ON win_history.user_id = users.id LIMIT 10;")
-   
-    result = cur.fetchall()
-    if len(result) > 0:
-        if original_rows:
-            return result
-        data = None
-        try:
-            data = [list(row) for row in result]
-            for row in data:
-                row[1] = time.mktime(row[1].timetuple())
-                row.append(get_discord_from_leetcode(row[0]))
-                row[0],row[1],row[2] = row[2],row[0],row[1]
-        except Exception as e:
-            traceback.print_exc()
-            print(e)
-        return data
-    else:
-        return None
+        return False, str(e)
