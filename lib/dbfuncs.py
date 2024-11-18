@@ -193,7 +193,7 @@ def get_last_reset(cursor):
 def get_admins(cursor):
     cursor.execute("SELECT discord_id FROM admins;")
     result = cursor.fetchall()
-    return [row[0] for row in result] if result else []
+    return result if result else []
 
 
 @with_db
