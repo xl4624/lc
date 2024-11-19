@@ -68,6 +68,15 @@ def get_leetcode_from_discord(cursor, discord_username):
     record = cursor.fetchall()
     return record[0][0] if record else None
 
+@with_db
+def get_discord_from_leetcode(cursor, leetcode_username):
+    cursor.execute(
+        "SELECT discord_username FROM account_owner WHERE LOWER(leetcode_username) = LOWER(%s);",
+        (leetcode_username,),
+    )
+    record = cursor.fetchall()
+    return record[0][0] if record else None
+
 
 @with_db
 def add_user(cursor, discord_id, leetcode_username):
@@ -156,18 +165,18 @@ def get_user_points(cursor, discord_user):
 @with_db
 def get_win_history(cursor, original_rows=False):
     cursor.execute(
-        "SELECT username, timestamp FROM win_history JOIN users ON win_history.user_id = users.id LIMIT 10;"
+        "SELECT username, timestamp FROM win_history JOIN users ON win_history.user_id = users.id ORDER BY timestamp DESC LIMIT 10;"
     )
     result = cursor.fetchall()
+    if len(result) == 0:
+        return None
     if original_rows:
         return result
-    data = [
-        {
-            "username": row[0],
-            "timestamp": time.mktime(row[1].timetuple()),
-        }
-        for row in result
-    ]
+    data = [list(row) for row in result]
+    for row in data:
+        row[1] = time.mktime(row[1].timetuple())
+        row.append(get_discord_from_leetcode(row[0]))
+        row[0],row[1],row[2] = row[2],row[0],row[1]
     return data
 
 @with_db
