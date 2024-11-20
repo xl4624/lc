@@ -70,8 +70,8 @@ class WinHistory(commands.Cog):
         leetcode_users = []
         wins = []
         for i in range(min(len(data),10)):
-            leetcode_users.append(data[i][0])
-            discord_users.append(f"{data[i][1]}")
+            leetcode_users.append(data[i][1])
+            discord_users.append(f"{data[i][0]}")
             wins.append(f"<t:{str(data[i][2])[:-2]}:R>")
         embed.add_field(name=f"{discord_emoji} Discord User", value="\n".join(discord_users), inline=True)
         embed.add_field(name=f"{leetcode_emoji} Leetcode User", value="\n".join(leetcode_users), inline=True)
