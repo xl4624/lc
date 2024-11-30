@@ -4,23 +4,23 @@ from discord import app_commands
 import requests
 import datetime
 
-class TopTen(commands.Cog):
+class AllTime(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.is_mobile_view = False
 
     @commands.Cog.listener()
     async def on_ready(self):
-        print("Top 10 cog loaded")
+        print("Top OAT cog loaded")
 
     @app_commands.command(
-        name="top10",
-        description="View the top 10 users.",
+        name="alltime",
+        description="View the top 10 users of all tiem.",
     )
-    async def top10(self, interaction: discord.Interaction):
+    async def alltime(self, interaction: discord.Interaction):
         await interaction.response.defer()
         try:
-            url = 'https://server.rakibshahid.com/leaderboard'
+            url = 'https://server.rakibshahid.com/leaderboard/leaderboard_history'
             response = requests.get(url)
             data = response.json()
             embed = self.create_detailed_embed(data, interaction.user.name)
@@ -42,31 +42,36 @@ class TopTen(commands.Cog):
             print(e)
 
     def create_mobile_embed(self, data, user_name):
-        description = ''
-        leetcode_emoji = self.bot.get_emoji(1290903612351844464)
-        discord_emoji = self.bot.get_emoji(1290903900169310248)
-        for i in range(10):
-            description += f"{str(f'{i + 1}.')}{str(data[i]['points']).rjust(5)} pts - {discord_emoji}{str(data[i]['discord_username'])} ([{leetcode_emoji}{str(data[i]['username'])}](https://leetcode.com/u/{data[i]['username']}))\n"
-        embed = discord.Embed(title="Top 10 Users - Mobile View", description=description, timestamp=datetime.datetime.now())
-        embed.set_footer(text=f"Requested by {user_name}")
-        return embed
+        try:
+            description = ''
+            leetcode_emoji = self.bot.get_emoji(1290903612351844464)
+            discord_emoji = self.bot.get_emoji(1290903900169310248)
+            for i in range(10):
+                description += f"{str(f'{i + 1}.').ljust(4)}{('**'+(str(data[i]['total_wins'])+'**')+' wins, '+('**'+str(data[i]['total_points'])+'**') + ' pts').rjust(17)} - {discord_emoji}{str(data[i]['discord_username'])} ([{leetcode_emoji}{str(data[i]['leetcode_username'])}](https://leetcode.com/u/{data[i]['leetcode_username']}))\n"
+                
+            embed = discord.Embed(title="All Time Top 10 - Mobile View", description=description, timestamp=datetime.datetime.now())
+            embed.set_footer(text=f"Requested by {user_name}")
+            return embed
+        except Exception as e:
+            print(e)
+            return
 
     def create_detailed_embed(self, data, user_name):
-        embed = discord.Embed(title="Top 10 Users", timestamp=datetime.datetime.utcnow())
+        embed = discord.Embed(title="All Time Top 10", timestamp=datetime.datetime.utcnow())
         leetcode_emoji = self.bot.get_emoji(1290903612351844464)
         discord_emoji = self.bot.get_emoji(1290903900169310248)
         discord_users = []
         leetcode_users = []
         points = []
         for i in range(10):
-            leetcode_users.append(data[i]['username'])
+            leetcode_users.append(data[i]['leetcode_username'])
             discord_users.append(f"{data[i]['discord_username']}")
-            points.append(data[i]['points'])
+            points.append(f"{(str(data[i]['total_wins'])+',').ljust(5)}{data[i]['total_points']}")
         embed.add_field(name=f"{discord_emoji} Discord User", value="\n".join(discord_users), inline=True)
         embed.add_field(name=f"{leetcode_emoji} Leetcode User", value="\n".join(leetcode_users), inline=True)
-        embed.add_field(name=":chart_with_upwards_trend: Points", value="\n".join(map(str, points)), inline = True)
+        embed.add_field(name=":trophy: Wins,Points", value="\n".join(map(str, points)), inline = True)
         embed.set_footer(text=f"Requested by {user_name}")
         return embed
 
 async def setup(bot):
-    await bot.add_cog(TopTen(bot))
+    await bot.add_cog(AllTime(bot))
