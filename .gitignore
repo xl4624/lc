@@ -1,6 +1,7 @@
 config.py
 dbtest.py
 test.py
+testingcogs
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

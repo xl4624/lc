@@ -96,6 +96,13 @@ def add_user(cursor, discord_id, leetcode_username):
         cursor.execute(
             "INSERT INTO points (user_id, points, wins) VALUES (%s, 0, 0);", (user_id,)
         )
+        cursor.execute(
+            """
+            INSERT INTO last_completed (user_id, problem_name, completed_at)
+            VALUES (%s, %s, CURRENT_TIMESTAMP);
+            """,
+            (user_id, "PLACEHOLDERPROBLEMNAMEFORINITIALREGISTRATION"),
+        )
         return True, ""
     except Exception as e:
         return False, str(e)
