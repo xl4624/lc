@@ -42,30 +42,35 @@ class TopTen(commands.Cog):
             print(e)
 
     def create_mobile_embed(self, data, user_name):
-        description = ''
+        description = "View full leaderboard [here](https://codeforall.vercel.app/leaderboard)\n"
         leetcode_emoji = self.bot.get_emoji(1290903612351844464)
         discord_emoji = self.bot.get_emoji(1290903900169310248)
         for i in range(10):
-            description += f"{str(f'{i + 1}.')}{str(data[i]['points']).rjust(5)} pts - {discord_emoji}{str(data[i]['discord_username'])} ([{leetcode_emoji}{str(data[i]['username'])}](https://leetcode.com/u/{data[i]['username']}))\n"
+            cleaned_discord_username = str(data[i]['discord_username']).replace('_', '\\_').replace('*', '\\*')
+            cleaned_leetcode_username = str(data[i]['username']).replace('_', '\\_').replace('*', '\\*')
+            description += f"{str(f'{i + 1}.')}{str(data[i]['points']).rjust(5)} pts - {discord_emoji}{cleaned_discord_username} ([{leetcode_emoji}{cleaned_leetcode_username}](https://leetcode.com/u/{data[i]['username']}))\n"
         embed = discord.Embed(title="Top 10 Users - Mobile View", description=description, timestamp=datetime.datetime.now())
         embed.set_footer(text=f"Requested by {user_name}")
         return embed
 
     def create_detailed_embed(self, data, user_name):
         embed = discord.Embed(title="Top 10 Users", timestamp=datetime.datetime.utcnow())
+        embed.description = "View full leaderboard [here](https://codeforall.vercel.app/leaderboard)"
         leetcode_emoji = self.bot.get_emoji(1290903612351844464)
         discord_emoji = self.bot.get_emoji(1290903900169310248)
         discord_users = []
         leetcode_users = []
         points = []
         for i in range(10):
-            leetcode_users.append(data[i]['username'])
-            discord_users.append(f"{data[i]['discord_username']}")
+            cleaned_discord_username = str(data[i]['discord_username']).replace('_', '\\_').replace('*', '\\*')
+            cleaned_leetcode_username = str(data[i]['username']).replace('_', '\\_').replace('*', '\\*')
+            leetcode_users.append(cleaned_leetcode_username)
+            discord_users.append(cleaned_discord_username)
             points.append(data[i]['points'])
         embed.add_field(name=f"{discord_emoji} Discord User", value="\n".join(discord_users), inline=True)
         embed.add_field(name=f"{leetcode_emoji} Leetcode User", value="\n".join(leetcode_users), inline=True)
         embed.add_field(name=":chart_with_upwards_trend: Points", value="\n".join(map(str, points)), inline = True)
-        embed.set_footer(text=f"Requested by {user_name}")
+        embed.set_footer(text=f"Requested by {user_name}. ")
         return embed
 
 async def setup(bot):

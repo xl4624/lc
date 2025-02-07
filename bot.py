@@ -21,7 +21,7 @@ async def on_ready():
 
 @bot.event
 async def load():
-    for file in os.listdir("./cogs"):
+    for file in os.listdir("/home/rakib/lcleaderboard/lc-leaderboard-bot/cogs"):
         if file.endswith(".py"):
             await bot.load_extension(f"cogs.{file[:-3]}")
 
