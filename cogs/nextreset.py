@@ -5,6 +5,7 @@ import lib.dbfuncs as dbfuncs
 import datetime
 import traceback
 import time
+from lib.dbfuncs import track_queries
 
 
 class NextReset(commands.Cog):
@@ -19,6 +20,7 @@ class NextReset(commands.Cog):
         name="nextreset",
         description="Check when the next leaderboard reset is.",
     )
+    @track_queries
     async def nextreset(self, interaction: discord.Interaction):
         await interaction.response.defer()
         
@@ -34,10 +36,10 @@ class NextReset(commands.Cog):
                 # convert next_reset to a unix timestamp
                 next_reset_ts = time.mktime(next_reset.timetuple())
                 last_rest_ts = time.mktime(last_reset.timetuple())
-                print(next_reset_ts)
-                print(int(next_reset_ts))
-                print(last_rest_ts)
-                print(int(last_rest_ts))
+                # print(next_reset_ts)
+                # print(int(next_reset_ts))
+                # print(last_rest_ts)
+                # print(int(last_rest_ts))
                 description += "Last Reset: <t:{}:R>\n".format(int(last_rest_ts))
                 description += "Next Reset: <t:{}:R>\n".format(int(next_reset_ts))
                 

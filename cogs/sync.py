@@ -2,6 +2,7 @@
 import discord
 from discord.ext import commands
 import lib.dbfuncs as dbfuncs
+from lib.dbfuncs import track_queries
 
 class Sync(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -14,6 +15,7 @@ class Sync(commands.Cog):
     # sync command
     # move into main if possible
     @commands.command()
+    @track_queries
     async def sync(self, ctx) -> None:
         print(ctx.message.author.id)
         admins = dbfuncs.get_admins()

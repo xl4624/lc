@@ -6,6 +6,7 @@ import lib.emojis as emojis
 import requests
 import datetime
 import traceback
+from lib.dbfuncs import track_queries
 
 
 class Lookup(commands.Cog):
@@ -21,6 +22,7 @@ class Lookup(commands.Cog):
         description="Lookup a user on the leaderboard by discord or leetcode username.",
     )
     @app_commands.describe(username="enter discord or leetcode username")
+    @track_queries
     async def lookup(self, interaction: discord.Interaction, username: str):
         await interaction.response.defer()
         embed = discord.Embed(title=f"User Lookup - {username}", timestamp=datetime.datetime.now())
@@ -39,9 +41,11 @@ class Lookup(commands.Cog):
             try:
                 if response.status_code == 200:
                     data = response.json()
-                    description = f"{discord_emoji} **Discord Username**: {data['discord_username']}\n"
+                    cleaned_discord_username = str(data['discord_username']).replace('_', '\\_').replace('*', '\\*')
+                    cleaned_leetcode_username = str(data['leetcode_username']).replace('_', '\\_').replace('*', '\\*')
+                    description = f"{discord_emoji} **Discord Username**: {cleaned_discord_username}\n"
                     leetcode_url = f"https://leetcode.com/u/{data['leetcode_username']}"
-                    description += f"{leetcode_emoji} **LeetCode Username**: [{data['leetcode_username']}]({leetcode_url})\n"
+                    description += f"{leetcode_emoji} **LeetCode Username**: [{cleaned_leetcode_username}]({leetcode_url})\n"
                     # get points using db function
                     points = dbfuncs.get_user_points(data['discord_username'])
                     description += f":chart_with_upwards_trend: **Points**: {points}\n"

@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 import lib.dbfuncs as dbfuncs
-
+from lib.dbfuncs import track_queries
 
 class SelfRemove(commands.Cog):
     def __init__(self, bot):
@@ -17,6 +17,7 @@ class SelfRemove(commands.Cog):
         description="Remove yourself from the leaderboard. WARNING: This is irreversible, points will be reset to 0",
     )
     @app_commands.describe(confirmation="type CONFIRM to remove yourself")
+    @track_queries
     async def selfremove(self, interaction: discord.Interaction, confirmation: str):
         await interaction.response.defer()
 

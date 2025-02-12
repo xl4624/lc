@@ -5,6 +5,7 @@ import requests
 import datetime
 import lib.dbfuncs as dbfuncs
 import traceback
+from lib.dbfuncs import track_queries
 
 class WinHistory(commands.Cog):
     def __init__(self, bot):
@@ -19,6 +20,7 @@ class WinHistory(commands.Cog):
         name="winhistory",
         description="View the latest 10 winners.",
     )
+    @track_queries
     async def winhistory(self, interaction: discord.Interaction):
         await interaction.response.defer()
         try:
@@ -55,7 +57,9 @@ class WinHistory(commands.Cog):
         discord_emoji = self.bot.get_emoji(1290903900169310248)
         try:
             for i in range(min(10,len(data))):
-                description += f"{i + 1}. {discord_emoji}{data[i][0]} ({leetcode_emoji}{data[i][1]}) - <t:{str(data[i][2])[:-2]}:R> \n"
+                cleaned_discord_username = str(data[i][0]).replace('_', '\\_').replace('*', '\\*')
+                cleaned_leetcode_username = str(data[i][1]).replace('_', '\\_').replace('*', '\\*')
+                description += f"{i + 1}. {discord_emoji}{cleaned_discord_username} ({leetcode_emoji}{cleaned_leetcode_username}) - <t:{str(data[i][2])[:-2]}:R> \n"
         except:
             traceback.print_exc()
         embed = discord.Embed(title=f"Latest Winners - Mobile View", description=description, timestamp=datetime.datetime.now())
@@ -70,8 +74,10 @@ class WinHistory(commands.Cog):
         leetcode_users = []
         wins = []
         for i in range(min(len(data),10)):
-            leetcode_users.append(data[i][1])
-            discord_users.append(f"{data[i][0]}")
+            cleaned_discord_username = str(data[i][0]).replace('_', '\\_').replace('*', '\\*')
+            cleaned_leetcode_username = str(data[i][1]).replace('_', '\\_').replace('*', '\\*')
+            leetcode_users.append(cleaned_leetcode_username)
+            discord_users.append(cleaned_discord_username)
             wins.append(f"<t:{str(data[i][2])[:-2]}:R>")
         embed.add_field(name=f"{discord_emoji} Discord User", value="\n".join(discord_users), inline=True)
         embed.add_field(name=f"{leetcode_emoji} Leetcode User", value="\n".join(leetcode_users), inline=True)

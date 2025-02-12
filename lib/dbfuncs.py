@@ -41,6 +41,40 @@ def with_db(func):
             conn.close()
     return wrapper
 
+def track_queries(func):
+    @wraps(func)
+    async def wrapper(self, interaction, *args, **kwargs):
+        update_query_count(interaction.user.id, interaction.user.name)
+        return await func(self, interaction, *args, **kwargs)
+    return wrapper
+
+@with_db
+def update_query_count(cursor,discord_id,discord_user):
+    cursor.execute(
+        "SELECT leetcode_username FROM account_owner WHERE LOWER(discord_username) = LOWER(%s);",
+        (discord_user,),
+    )
+    leetcode_username = cursor.fetchone()[0]
+    cursor.execute(
+        "SELECT id FROM users WHERE LOWER(username) = LOWER(%s);",
+        (leetcode_username,),
+    )
+    user_id = cursor.fetchone()[0]
+    cursor.execute(
+        "SELECT * FROM queries WHERE user_id = %s;",
+        (user_id,),
+    )
+    if cursor.fetchone():
+        cursor.execute(
+            "UPDATE queries SET queries = queries + 1 WHERE user_id = %s;",
+            (user_id,),
+        )
+    else:
+        cursor.execute(
+            "INSERT INTO queries (user_id, discord_id,queries) VALUES (%s, %s, %s);",
+            (user_id, str(discord_id), 1),
+        )   
+
 @with_db
 def check_leetcode_user(cursor, leetcode_username):
     cursor.execute(

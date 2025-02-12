@@ -3,6 +3,7 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 import lib.dbfuncs as dbfuncs
+from lib.dbfuncs import track_queries
 
 
 class AdminReset(commands.Cog):
@@ -25,6 +26,7 @@ class AdminReset(commands.Cog):
             app_commands.Choice(name="Monthly", value="30"),
         ]
     )
+    @track_queries
     async def AdminReset(
         self,
         interaction: discord.Interaction,

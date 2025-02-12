@@ -3,6 +3,7 @@ from discord.ext import commands
 from discord import app_commands
 import requests
 import datetime
+from lib.dbfuncs import track_queries
 
 class TopTen(commands.Cog):
     def __init__(self, bot):
@@ -17,8 +18,10 @@ class TopTen(commands.Cog):
         name="top10",
         description="View the top 10 users.",
     )
+    @track_queries
     async def top10(self, interaction: discord.Interaction):
         await interaction.response.defer()
+        # update_query_count(interaction.user.id, interaction.user.name)
         try:
             url = 'https://server.rakibshahid.com/leaderboard'
             response = requests.get(url)
@@ -42,7 +45,7 @@ class TopTen(commands.Cog):
             print(e)
 
     def create_mobile_embed(self, data, user_name):
-        description = "View full leaderboard [here](https://codeforall.vercel.app/leaderboard)\n"
+        description = "View full leaderboard at [codeforall.nyc](https://www.codeforall.nyc/leaderboard)\n"
         leetcode_emoji = self.bot.get_emoji(1290903612351844464)
         discord_emoji = self.bot.get_emoji(1290903900169310248)
         for i in range(10):
@@ -55,7 +58,7 @@ class TopTen(commands.Cog):
 
     def create_detailed_embed(self, data, user_name):
         embed = discord.Embed(title="Top 10 Users", timestamp=datetime.datetime.utcnow())
-        embed.description = "View full leaderboard [here](https://codeforall.vercel.app/leaderboard)"
+        embed.description = "View full leaderboard at [codeforall.nyc](https://www.codeforall.nyc/leaderboard)"
         leetcode_emoji = self.bot.get_emoji(1290903612351844464)
         discord_emoji = self.bot.get_emoji(1290903900169310248)
         discord_users = []

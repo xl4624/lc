@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 import lib.dbfuncs as dbfuncs
+from lib.dbfuncs import track_queries
 
 
 class AdminRegisterAdmin(commands.Cog):
@@ -16,6 +17,7 @@ class AdminRegisterAdmin(commands.Cog):
         name="zregisteradmin", description="Register a new admin (ADMIN ONLY)"
     )
     @app_commands.describe(discord_id="discord ID to register")
+    @track_queries
     async def adminregisteradmin(
         self, interaction: discord.Interaction, discord_id: str
     ):

@@ -3,6 +3,7 @@ from discord.ext import commands
 from discord import app_commands
 import requests
 import lib.dbfuncs as dbfuncs
+from lib.dbfuncs import track_queries
 
 
 class SelfRegister(commands.Cog):
@@ -18,6 +19,7 @@ class SelfRegister(commands.Cog):
         description="Register yourself to the leaderboard.",
     )
     @app_commands.describe(leetcode_user="link your discord to this leetcode account")
+    @track_queries
     async def selfregister(self, interaction: discord.Interaction, leetcode_user: str):
         await interaction.response.defer()
         try:
