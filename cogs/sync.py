@@ -17,11 +17,11 @@ class Sync(commands.Cog):
     @commands.command()
     # @track_queries
     async def sync(self, ctx) -> None:
-        print(ctx.message.author.id)
+        # print(ctx.message.author.id)
         admins = dbfuncs.get_admins()
         admins = set([admin[0] for admin in admins])
         if ctx.message.author.id in admins:
-            print("Admin detected")
+            # print("Admin detected")
             # update status
             activity = discord.Activity(
                 type=discord.ActivityType.watching, name=f" NeetCode videos"
