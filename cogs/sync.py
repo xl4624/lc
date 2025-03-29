@@ -15,7 +15,7 @@ class Sync(commands.Cog):
     # sync command
     # move into main if possible
     @commands.command()
-    @track_queries
+    # @track_queries
     async def sync(self, ctx) -> None:
         print(ctx.message.author.id)
         admins = dbfuncs.get_admins()
