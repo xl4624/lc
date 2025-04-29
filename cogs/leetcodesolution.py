@@ -98,12 +98,13 @@ class LeetcodeSolution(commands.Cog):
 
     async def handle_solution(self, interaction, language, code, url):
         await interaction.response.defer(thinking=True) 
+        author = interaction.user.mention
 
         url = self.sanitize_url(url)
         code = self.sanitize_code(code, language)
 
         title = self._extract_title(url) or "LeetCode Question"
-        display_title = f"[{title}]({url})"
+        display_title = f"[{title}]({url})\nAuthor: {author}"
 
         snippet = f"```{language}\n{code}\n```"
         message = f"{display_title}\n\n||{snippet}||"

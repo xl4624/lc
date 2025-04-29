@@ -256,3 +256,143 @@ def add_admin(cursor, discord_id):
         return True
     except Exception as e:
         return False, str(e)
+
+@with_db
+def check_if_user_did_problem(cursor,discord_user,problem_name):
+    leetcode_username = get_leetcode_from_discord(discord_user)
+    cursor.execute(
+        "SELECT * FROM user_submissions WHERE user_id = (SELECT id FROM users WHERE LOWER(username) = LOWER(%s)) AND problem_name = %s;",
+        (leetcode_username,problem_name),
+    )
+    
+    return cursor.fetchall()
+
+@with_db
+def check_if_user_busy(cursor,discord_user):
+    
+    leetcode_username = get_leetcode_from_discord(discord_user)
+    cursor.execute(
+        "SELECT busy FROM challenge WHERE id = (SELECT id FROM users WHERE LOWER(username) = LOWER(%s));",
+        (leetcode_username,),
+    )
+    result = cursor.fetchall()
+    if result == []:
+        # initialize the user
+        # use their id using leetcode user name, set wins, losses, quits all to 0 and busy to false
+        cursor.execute(
+            "INSERT INTO challenge (id, wins, losses, quits, busy) VALUES ((SELECT id FROM users WHERE LOWER(username) = LOWER(%s)), 0, 0, 0, false);",
+            (leetcode_username,),
+        )
+        return False
+    return result[0][0]
+        
+@with_db
+def set_user_busy(cursor,discord_user,busy=True):
+    leetcode_username = get_leetcode_from_discord(discord_user)
+    cursor.execute(
+        "UPDATE challenge SET busy = %s WHERE id = (SELECT id FROM users WHERE LOWER(username) = LOWER(%s));",
+        (busy, leetcode_username),
+    )
+    return True
+
+
+@with_db
+def add_loss(cursor, discord_user):
+    leetcode_username = get_leetcode_from_discord(discord_user)
+    cursor.execute(
+        """
+        UPDATE challenge
+        SET losses = losses + 1
+        WHERE id = (SELECT id FROM users WHERE LOWER(username) = LOWER(%s))
+        RETURNING losses;
+        """,
+        (leetcode_username,),
+    )
+    updated_losses = cursor.fetchone()[0]
+    return updated_losses
+
+@with_db
+def add_win(cursor, discord_user):
+    leetcode_username = get_leetcode_from_discord(discord_user)
+    cursor.execute(
+        """
+        UPDATE challenge
+        SET wins = wins + 1
+        WHERE id = (SELECT id FROM users WHERE LOWER(username) = LOWER(%s))
+        RETURNING wins;
+        """,
+        (leetcode_username,),
+    )
+    updated_wins = cursor.fetchone()[0]
+    return updated_wins
+
+@with_db
+def add_quit(cursor, discord_user):
+    leetcode_username = get_leetcode_from_discord(discord_user)
+    cursor.execute(
+        """
+        UPDATE challenge
+        SET quits = quits + 1
+        WHERE id = (SELECT id FROM users WHERE LOWER(username) = LOWER(%s))
+        RETURNING quits;
+        """,
+        (leetcode_username,),
+    )
+    updated_quits = cursor.fetchone()[0]
+    return updated_quits
+
+@with_db
+def get_wins(cursor, discord_user):
+    leetcode_username = get_leetcode_from_discord(discord_user)
+    cursor.execute(
+        """
+        SELECT wins
+        FROM challenge
+        WHERE id = (SELECT id FROM users WHERE LOWER(username) = LOWER(%s));
+        """,
+        (leetcode_username,),
+    )
+    result = cursor.fetchone()
+    return result[0] if result else 0
+
+@with_db
+def get_losses(cursor, discord_user):
+    leetcode_username = get_leetcode_from_discord(discord_user)
+    cursor.execute(
+        """
+        SELECT losses
+        FROM challenge
+        WHERE id = (SELECT id FROM users WHERE LOWER(username) = LOWER(%s));
+        """,
+        (leetcode_username,),
+    )
+    result = cursor.fetchone()
+    return result[0] if result else 0
+
+@with_db
+def get_quits(cursor, discord_user):
+    leetcode_username = get_leetcode_from_discord(discord_user)
+    cursor.execute(
+        """
+        SELECT quits
+        FROM challenge
+        WHERE id = (SELECT id FROM users WHERE LOWER(username) = LOWER(%s));
+        """,
+        (leetcode_username,),
+    )
+    result = cursor.fetchone()
+    return result[0] if result else 0
+
+@with_db
+def get_user_challenge_stats(cursor, discord_user):
+    leetcode_username = get_leetcode_from_discord(discord_user)
+    cursor.execute(
+        """
+        SELECT wins, losses, quits
+        FROM challenge
+        WHERE id = (SELECT id FROM users WHERE LOWER(username) = LOWER(%s));
+        """,
+        (leetcode_username,),
+    )
+    result = cursor.fetchone()
+    return list(result) if result else [0, 0, 0]

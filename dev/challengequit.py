@@ -1,0 +1,1 @@
+# create another discord slash command to quit the challenge

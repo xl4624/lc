@@ -1,0 +1,1 @@
+nodemon --exec "./lcl/bin/python3" bot.py --ext py
