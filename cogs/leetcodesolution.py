@@ -76,6 +76,12 @@ class LeetcodeSolution(commands.Cog):
             "bash": "bash", "shell": "bash",
         }
         
+        # Languages that use || for logical OR
+        self.languages_with_or_operator = {
+            "java", "c", "cpp", "csharp", "javascript", "typescript", 
+            "php", "swift", "kotlin", "dart", "rust", "go"
+        }
+        
         self.valid_domains = [
             "leetcode.com",
             "leetcode.cn",
@@ -94,13 +100,13 @@ class LeetcodeSolution(commands.Cog):
         await interaction.response.defer(thinking=True) 
 
         url = self.sanitize_url(url)
-        code = self.sanitize_code(code)
+        code = self.sanitize_code(code, language)
 
         title = self._extract_title(url) or "LeetCode Question"
         display_title = f"[{title}]({url})"
 
         snippet = f"```{language}\n{code}\n```"
-        message = f"{display_title}\n\n{snippet}"
+        message = f"{display_title}\n\n||{snippet}||"
 
         if len(message) <= 2_000:
             await interaction.followup.send(message)
@@ -159,8 +165,16 @@ class LeetcodeSolution(commands.Cog):
             return f"{parsed.scheme}://{parsed.netloc}{parsed.path}"
         return url
     
-    def sanitize_code(self, code):
+    def sanitize_code(self, code, language):
+        # Replace triple backticks to prevent breaking code blocks
         code = code.replace("```", "'''")
+        
+        # For languages that use || as the OR operator, replace with Unicode vertical line
+        # to prevent Discord from interpreting it as a spoiler tag
+        if language in self.languages_with_or_operator:
+            # Replace || with ⏐⏐ (Unicode Character "⏐" (U+23D0))
+            code = re.sub(r'(?<!\\)\|\|', '⏐⏐', code)
+        
         return code
     
     def sanitize_filename(self, filename):
