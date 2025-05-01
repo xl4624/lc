@@ -4,6 +4,7 @@ from discord import app_commands, ui
 import re, io
 import urllib.parse
 import validators
+import requests
 
 class LanguageSelect(ui.Select):
     def __init__(self, parent_cog: "LeetcodeSolution"):
@@ -31,10 +32,20 @@ class LanguageSelectView(ui.View):
         super().__init__(timeout=300)  # 5 minute timeout
         self.add_item(LanguageSelect(parent_cog))
 
-class CodeModal(ui.Modal, title="Paste your solution"):
-    code = ui.TextInput(label="solution code", style=discord.TextStyle.paragraph)
-    question_url = ui.TextInput(label="leetcode link", placeholder="https://leetcode.com/problems/two-sum")
 
+class CodeModal(ui.Modal, title="Paste your solution"):
+    def get_daily_url():
+        try:
+            url = 'https://leetcode.server.rakibshahid.com/daily'
+            response_json = requests.get(url).json()
+            daily_url = response_json['questionLink']
+            return daily_url
+        except:
+            return "https://leetcode.com/problems/two-sum"
+        
+    code = ui.TextInput(label="solution code", style=discord.TextStyle.paragraph)      
+    question_url = ui.TextInput(label="leetcode link", default=get_daily_url())
+    
     def __init__(self, parent_cog: "LeetcodeSolution", language: str):
         super().__init__()
         self.parent_cog = parent_cog
@@ -91,7 +102,7 @@ class LeetcodeSolution(commands.Cog):
             "dart": "dart",
             "r": "r",
             "sql": "sql",
-            "bash": "bash", "shell": "bash",
+            # "bash": "bash", "shell": "bash", # dumb ahh
         }
         
         # Languages that use || for logical OR
