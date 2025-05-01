@@ -76,9 +76,10 @@ async def check_all_players_joined(msg,author_user,other_user):
 async def sleep_and_monitor(msg, embed, author_user, other_user,time_limit,question_data):
     winner = None
     loser = None
-    for i in range(time_limit//5):
-        print(f"Sleeping for 5 min")
-        await asyncio.sleep(5*60)
+    minutes = 1
+    for i in range(time_limit//minutes):
+        print(f"Sleeping for {minutes} min")
+        await asyncio.sleep(minutes*60)
         # pretend to check problem status
         author_res = dbfuncs.check_if_user_did_problem(author_user.name,question_data['title'])
         other_res = dbfuncs.check_if_user_did_problem(other_user.name,question_data['title'])
@@ -110,6 +111,15 @@ async def sleep_and_monitor(msg, embed, author_user, other_user,time_limit,quest
         # both completed at the same time
         if author_res[0][3] == other_res[0][3]:
             break
+        if winner is None or loser is None:
+            embed.description += "\nNo winner could be determined! Either both failed to solve or finished at the same time. Challenge concluded!"
+            embed.color = discord.Color.orange()
+            embed.timestamp = datetime.datetime.now()
+            embed.set_footer(text="Challenge concluded.")
+            await msg.edit(embed=embed)
+            dbfuncs.set_user_busy(author_user.name, busy=False)
+            dbfuncs.set_user_busy(other_user.name, busy=False)
+            return
     await wrapup_challenge(msg,embed,winner,loser,question_data,author_res,other_res)
         
     
@@ -213,9 +223,9 @@ class Challenge(commands.Cog):
         try:
             await interaction.response.defer()
             ################################################
-            if interaction.user.id != 235835251052642315:
-                await interaction.followup.send(content=":shushing_face: :eyes:")
-                return
+            # if interaction.user.id != 235835251052642315:
+            #   await interaction.followup.send(content=":shushing_face: :eyes:")
+            #    return
             author_user = await self.bot.fetch_user(interaction.user.id)
             other_user = await self.bot.fetch_user(discord_user.id)
             
@@ -234,7 +244,7 @@ class Challenge(commands.Cog):
             if difficulty is not None:
                 description_string += f'\n{difficulty.name} Problem'
             message_embed = discord.Embed(title='Leetcode Challenge!', description=description_string, color=discord.Color.blue())
-            await interaction.followup.send(embed=message_embed)
+            await interaction.followup.send(embed=message_embed,content=f"{author_user.mention} vs {other_user.mention}")
             msg = await interaction.original_response()
             await msg.add_reaction("✅")
             # wait

@@ -35,6 +35,7 @@ class Lookup(commands.Cog):
         emojimap = emojis.get_all_emojis(self)
         leetcode_emoji = emojimap["lc"]
         discord_emoji = emojimap["dc"]
+        discord_name = None
         header_titles = ["discord-username", "leetcode-username"]
         for url, header_title in zip(urls, header_titles):
             response = requests.get(url, headers={header_title: username})
@@ -42,6 +43,7 @@ class Lookup(commands.Cog):
                 if response.status_code == 200:
                     data = response.json()
                     cleaned_discord_username = str(data['discord_username']).replace('_', '\\_').replace('*', '\\*')
+                    discord_name = data['discord_username']
                     cleaned_leetcode_username = str(data['leetcode_username']).replace('_', '\\_').replace('*', '\\*')
                     description = f"{discord_emoji} **Discord Username**: {cleaned_discord_username}\n"
                     leetcode_url = f"https://leetcode.com/u/{data['leetcode_username']}"
@@ -105,6 +107,10 @@ class Lookup(commands.Cog):
                     break
             except Exception as e:
                 traceback.print_exc()
+        # get user challenge stats
+        challenge_stats = dbfuncs.get_user_challenge_stats(discord_name)
+        wins,losses,quits = challenge_stats
+        description += f":crossed_swords: Challenge Stats:\n{wins} {'win' if wins == 1 else 'wins'}, {losses} {'loss' if losses == 1 else 'losses'}, {quits} {'quit' if quits == 1 else 'quits'}"
         embed.description = description
 
         
