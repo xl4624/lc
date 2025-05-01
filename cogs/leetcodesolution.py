@@ -4,15 +4,52 @@ from discord import app_commands, ui
 import re, io
 import urllib.parse
 import validators
+import requests
+
+class LanguageSelect(ui.Select):
+    def __init__(self, parent_cog: "LeetcodeSolution"):
+        self.parent_cog = parent_cog
+        
+        unique_languages = sorted(set(parent_cog.language_map.values()))
+        options = [
+            discord.SelectOption(label=lang) 
+            for lang in unique_languages
+        ]
+        
+        super().__init__(
+            placeholder="Select a programming language...",
+            min_values=1,
+            max_values=1,
+            options=options
+        )
+    
+    async def callback(self, interaction: discord.Interaction):
+        selected_language = self.values[0]
+        await interaction.response.send_modal(CodeModal(self.parent_cog, selected_language))
+
+class LanguageSelectView(ui.View):
+    def __init__(self, parent_cog: "LeetcodeSolution"):
+        super().__init__(timeout=300)  # 5 minute timeout
+        self.add_item(LanguageSelect(parent_cog))
+
 
 class CodeModal(ui.Modal, title="Paste your solution"):
-    language     = ui.TextInput(label="language (python, cpp, java, etc.)", max_length=20)
-    code         = ui.TextInput(label="solution code", style=discord.TextStyle.paragraph)
-    question_url = ui.TextInput(label="leetcode link", placeholder="https://leetcode.com/problems/two-sum")
-
-    def __init__(self, parent_cog: "LeetcodeSolution"):
+    def get_daily_url():
+        try:
+            url = 'https://leetcode.server.rakibshahid.com/daily'
+            response_json = requests.get(url).json()
+            daily_url = response_json['questionLink']
+            return daily_url
+        except:
+            return "https://leetcode.com/problems/two-sum"
+        
+    code = ui.TextInput(label="solution code", style=discord.TextStyle.paragraph)      
+    question_url = ui.TextInput(label="leetcode link", default=get_daily_url())
+    
+    def __init__(self, parent_cog: "LeetcodeSolution", language: str):
         super().__init__()
         self.parent_cog = parent_cog
+        self.language = language
 
     async def on_submit(self, interaction: discord.Interaction):
         if not self.parent_cog.is_valid_leetcode_link(self.question_url.value):
@@ -21,18 +58,10 @@ class CodeModal(ui.Modal, title="Paste your solution"):
                 ephemeral=True
             )
             return
-            
-        normalized_language = self.parent_cog.normalize_language(self.language.value)
-        if normalized_language not in self.parent_cog.language_map.values():
-            await interaction.response.send_message(
-                f"⚠️ Unsupported language: '{self.language.value}'. Please use one of the supported languages.",
-                ephemeral=True
-            )
-            return
         
         await self.parent_cog.handle_solution(
             interaction,
-            normalized_language,
+            self.language,
             self.code.value,
             self.question_url.value,
         )
@@ -73,7 +102,7 @@ class LeetcodeSolution(commands.Cog):
             "dart": "dart",
             "r": "r",
             "sql": "sql",
-            "bash": "bash", "shell": "bash",
+            # "bash": "bash", "shell": "bash", # dumb ahh
         }
         
         # Languages that use || for logical OR
@@ -93,8 +122,12 @@ class LeetcodeSolution(commands.Cog):
         print("Leetcode Solution cog loaded")
 
     @app_commands.command(name="leetcode", description="Format your LeetCode Solution")
-    async def open_modal(self, interaction: discord.Interaction):
-        await interaction.response.send_modal(CodeModal(self))
+    async def open_language_select(self, interaction: discord.Interaction):
+        await interaction.response.send_message(
+            "Select the programming language for your LeetCode solution:",
+            view=LanguageSelectView(self),
+            ephemeral=True
+        )
 
     async def handle_solution(self, interaction, language, code, url):
         await interaction.response.defer(thinking=True) 
