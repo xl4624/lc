@@ -73,89 +73,129 @@ async def check_all_players_joined(msg,author_user,other_user):
         return False
     return True
 
-async def sleep_and_monitor(msg, embed, author_user, other_user,time_limit,question_data):
+async def check_problem_done_usingAPI(user,question_data):
+    url = f'https://leetcode.server.rakibshahid.com/{user}/acSubmission'
+    response = requests.get(url).json()
+    for submission in reversed(response['submission']):
+        if submission['title']==question_data['title']:
+            return submission
+    return None
+            
+def parse_unix_timestamp(unix_ts):
+    return datetime.datetime.fromtimestamp(int(unix_ts))
+
+def extract_submission_time(api_res, fallback_res):
+    if api_res and 'timestamp' in api_res:
+        return parse_unix_timestamp(api_res['timestamp'])
+    if fallback_res:
+        return fallback_res[0][3]
+    return None
+
+async def sleep_and_monitor(msg, embed, author_user, other_user, time_limit, question_data):
     winner = None
     loser = None
+    winner_res = None
+    loser_res = None
     minutes = 1
-    for i in range(time_limit//minutes):
-        print(f"Sleeping for {minutes} min")
-        await asyncio.sleep(minutes*60)
-        # pretend to check problem status
-        author_res = dbfuncs.check_if_user_did_problem(author_user.name,question_data['title'])
-        other_res = dbfuncs.check_if_user_did_problem(other_user.name,question_data['title'])
-        # print(f"author_res: {author_res}")
-        # print(f"other_res: {other_res}")
-        # neither completed
-        if author_res == [] and other_res == []:
-            continue
-        # author completed but other did not
-        if other_res == []:
-            winner = author_user
-            loser = other_user
+
+    for _ in range(time_limit // minutes):
+        await asyncio.sleep(minutes * 60)
+
+        author_api_res = await check_problem_done_usingAPI(
+            dbfuncs.get_leetcode_from_discord(author_user.name), question_data)
+        other_api_res = await check_problem_done_usingAPI(
+            dbfuncs.get_leetcode_from_discord(other_user.name), question_data)
+
+        if author_api_res:
+            print(f'[API] {author_user.name}: {author_api_res}')
+        if other_api_res:
+            print(f'[API] {other_user.name}: {other_api_res}')
+
+        author_res = dbfuncs.check_if_user_did_problem(author_user.name, question_data['title'])
+        other_res = dbfuncs.check_if_user_did_problem(other_user.name, question_data['title'])
+
+        print(f'[DB] {author_user.name}: {author_res}')
+        print(f'[DB] {other_user.name}: {other_res}')
+
+        author_time = extract_submission_time(author_api_res, author_res)
+        other_time = extract_submission_time(other_api_res, other_res)
+
+        if author_time and other_time:
+            if author_time < other_time:
+                winner, loser = author_user, other_user
+                winner_res, loser_res = author_api_res or author_res, other_api_res or other_res
+            elif other_time < author_time:
+                winner, loser = other_user, author_user
+                winner_res, loser_res = other_api_res or other_res, author_api_res or author_res
+            else:
+                print("Both submitted at the same time:", author_time)
             break
-        # other completed but author did not
-        if author_res == []:
-            winner = other_user
-            loser = author_user
+        elif author_time:
+            winner, loser = author_user, other_user
+            winner_res, loser_res = author_api_res or author_res, other_api_res or other_res
             break
-        # both completed but author completed first
-        if author_res[0][3] < other_res[0][3]:
-            winner = author_user
-            loser = other_user
+        elif other_time:
+            winner, loser = other_user, author_user
+            winner_res, loser_res = other_api_res or other_res, author_api_res or author_res
             break
-        # both completed but other completed first
-        if other_res[0][3] < author_res[0][3]:
-            winner = other_user
-            loser = author_user
-            break
-        # both completed at the same time
-        if author_res[0][3] == other_res[0][3]:
-            break
-        if winner is None or loser is None:
-            embed.description += "\nNo winner could be determined! Either both failed to solve or finished at the same time. Challenge concluded!"
-            embed.color = discord.Color.orange()
-            embed.timestamp = datetime.datetime.now()
-            embed.set_footer(text="Challenge concluded.")
-            await msg.edit(embed=embed)
-            dbfuncs.set_user_busy(author_user.name, busy=False)
-            dbfuncs.set_user_busy(other_user.name, busy=False)
-            return
-    await wrapup_challenge(msg,embed,winner,loser,question_data,author_res,other_res)
+
+    if winner is None or loser is None:
+        embed.description += "\nNo winner could be determined! Either both failed to solve or finished at the same time. Challenge concluded!"
+        embed.color = discord.Color.orange()
+        embed.timestamp = datetime.datetime.now()
+        embed.set_footer(text="Challenge concluded.")
+        await msg.edit(embed=embed)
+        dbfuncs.set_user_busy(author_user.name, busy=False)
+        dbfuncs.set_user_busy(other_user.name, busy=False)
+        return
+
+    await wrapup_challenge(msg, embed, winner, loser, question_data, winner_res, loser_res)
         
     
     
-async def wrapup_challenge(msg,embed,winner,loser,question_data,author_res,other_res):
+def get_submission_time_str(res):
+    if isinstance(res, dict) and "timestamp" in res:
+        return str(parse_unix_timestamp(res["timestamp"]))
+    if isinstance(res, list) and len(res) > 0:
+        return str(res[0][3])
+    return None
+
+async def wrapup_challenge(msg, embed, winner, loser, question_data, winner_res, loser_res):
+    dbfuncs.set_user_busy(winner.name, busy=False)
+    dbfuncs.set_user_busy(loser.name, busy=False)
     embed.timestamp = datetime.datetime.now()
     embed.set_footer(text=f"Challenge concluded.")
     await msg.edit(embed=embed)
-    # update database entries
+
     dbfuncs.add_win(winner.name)
     dbfuncs.add_loss(loser.name)
     w_stats = dbfuncs.get_user_challenge_stats(winner.name)
     l_stats = dbfuncs.get_user_challenge_stats(loser.name)
-    
-    
-    # create new embed
+
     final_embed = discord.Embed(title="Challenge Over!", color=discord.Color.blue())
     final_embed.description = f"Challenge between {winner.mention} and {loser.mention} has ended!\n"
-    final_embed.description += f"After completing \'{question_data['title']}\' first, {winner.mention} has won!\n"
+    final_embed.description += f"After completing '{question_data['title']}' first, {winner.mention} has won!\n"
     final_embed.description += f"Final stats:\n"
-    if author_res != []:
-        final_embed.description += f"{winner.mention} completed the problem at {author_res[0][3]}\n"
+
+    winner_time = get_submission_time_str(winner_res)
+    loser_time = get_submission_time_str(loser_res)
+
+    if winner_time:
+        final_embed.description += f"{winner.mention} completed the problem at {winner_time}\n"
     else:
         final_embed.description += f"{winner.mention} did not complete the problem at the time of checking!\n"
-    if other_res != []:
-        final_embed.description += f"{loser.mention} completed the problem at {other_res[0][3]}\n"
+
+    if loser_time:
+        final_embed.description += f"{loser.mention} completed the problem at {loser_time}\n"
     else:
         final_embed.description += f"{loser.mention} did not complete the problem at the time of checking!\n"
-        
-    final_embed.description += f"User, Wins, Losses, Quits\n"
+
+    final_embed.description += f"\nUser, Wins, Losses, Quits\n"
     final_embed.description += f"{winner.name}: {', '.join([str(x) for x in w_stats])}\n"
     final_embed.description += f"{loser.name}: {', '.join([str(x) for x in l_stats])}\n"
-    # reply to embed
+
     await msg.reply(embed=final_embed)
-    dbfuncs.set_user_busy(winner.name,busy=False)
-    dbfuncs.set_user_busy(loser.name,busy=False)
+    
 
 async def start_challenge(msg,embed,author_user,other_user,question_data):
     await msg.add_reaction("✅")
@@ -240,7 +280,7 @@ class Challenge(commands.Cog):
                 await interaction.followup.send(f"Invalid users: {''.join(invalid_users)}! Make them register for the leaderboard first! :crying_cat:")
                 return
             
-            description_string=f'Waiting 10s for {other_user.mention} and {author_user.mention} to join! React below to join!'
+            description_string=f'Waiting 15s for {other_user.mention} and {author_user.mention} to join! React below to join!'
             if difficulty is not None:
                 description_string += f'\n{difficulty.name} Problem'
             message_embed = discord.Embed(title='Leetcode Challenge!', description=description_string, color=discord.Color.blue())
