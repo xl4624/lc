@@ -14,10 +14,12 @@ class LanguageSelect(ui.Select):
     def __init__(self, parent_cog: "LeetcodeSolution"):
         self.parent_cog = parent_cog
         
-        unique_languages = sorted(set(parent_cog.language_map.values()))
+        code_order = ['python', 'java', 'c++', 'javascript', 'rust', 'c#', 'go', 'ruby', 'c', 'sql', 'typescript', 'swift', 'kotlin', 
+                           'scala', 'dart', 'php', 'erlang', 'elixir']
+
         options = [
-            discord.SelectOption(label=lang) 
-            for lang in unique_languages
+            discord.SelectOption(label=lang.capitalize()) 
+            for lang in code_order
         ]
         
         super().__init__(
@@ -33,7 +35,7 @@ class LanguageSelect(ui.Select):
 
 class LanguageSelectView(ui.View):
     def __init__(self, parent_cog: "LeetcodeSolution"):
-        super().__init__(timeout=300)  # 5 minute timeout
+        super().__init__(timeout=60)  # 1 minute timeout
         self.add_item(LanguageSelect(parent_cog))
 
 
