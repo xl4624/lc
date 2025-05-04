@@ -97,7 +97,7 @@ class Lookup(commands.Cog):
                                 difficulty_emoji = ":orange_square:"
                             elif difficulty == 10:
                                 difficulty_emoji = ":red_square:"
-                            leetcode_ac.append(f"{emoji}{difficulty_emoji} {json['submission'][i]['title']} - <t:{timestamp}:R>")
+                            leetcode_ac.append(f"{emoji}{difficulty_emoji} [{json['submission'][i]['title']}](https://leetcode.com/submissions/detail/{json['submission'][i]['id']}) - <t:{timestamp}:R>")
                     if leetcode_ac:
                         leetcode_ac_string = '\n'.join(leetcode_ac)
                         description += f":white_check_mark: **{len(leetcode_ac)} Recent LeetCode Accepted Submissions**:\n{leetcode_ac_string}\n"
