@@ -1,15 +1,25 @@
 import json
+import aiohttp
 import traceback
 import discord
 from discord.ext import commands
 from discord import app_commands, ui
 import config
-from google import genai
+import genai
 import re, io
 import urllib.parse
 import validators
 import requests
 
+import lib.dbfuncs as dbfuncs
+
+# --------------------------- Helper Functions --------------------------- #
+async def fetch_json(session: aiohttp.ClientSession, url: str):
+    async with session.get(url, timeout=10) as r:
+        r.raise_for_status()
+        return await r.json()
+    
+# --------------------------- UI Elements --------------------------- #
 class LanguageSelect(ui.Select):
     def __init__(self, parent_cog: "LeetcodeSolution"):
         self.parent_cog = parent_cog
@@ -48,9 +58,9 @@ class CodeModal(ui.Modal, title="Paste your solution"):
             return daily_url
         except:
             return "https://leetcode.com/problems/two-sum"
-        
+    
+    submission_url = ui.TextInput(label="leetcode submission link", placeholder=get_daily_url())
     code = ui.TextInput(label="solution code", style=discord.TextStyle.paragraph)      
-    question_url = ui.TextInput(label="leetcode link", placeholder=get_daily_url())
     
     def __init__(self, parent_cog: "LeetcodeSolution", language: str):
         super().__init__()
@@ -58,7 +68,7 @@ class CodeModal(ui.Modal, title="Paste your solution"):
         self.language = language
 
     async def on_submit(self, interaction: discord.Interaction):
-        if not self.parent_cog.is_valid_leetcode_link(self.question_url.value):
+        if not self.parent_cog.is_valid_leetcode_submission_link(self.submission_url.value):
             await interaction.response.send_message(
                 "⚠️ Invalid LeetCode URL. Please provide a valid LeetCode problem link.",
                 ephemeral=True
@@ -69,11 +79,13 @@ class CodeModal(ui.Modal, title="Paste your solution"):
             interaction,
             self.language,
             self.code.value,
-            self.question_url.value,
+            self.submission_url.value,
         )
 
+# --------------------------- Main Cog --------------------------- #
 
-class LeetcodeSolution(commands.Cog):    
+class LeetcodeSolution(commands.Cog):  
+      
     def __init__(self, bot): 
         self.bot = bot
         
@@ -123,19 +135,100 @@ class LeetcodeSolution(commands.Cog):
             "leetcode.cn",
             "leetcode-cn.com"
         ]
+    # --------------------------- Slash Commands --------------------------- #
+    LEET_MODE_CHOICES = [
+    app_commands.Choice(name="Auto (latest submission)", value="auto"),
+    app_commands.Choice(name="Manual (paste code)", value="manual"),
+    ]
+
+    @app_commands.command(name="leetcode", description="Share a LeetCode solution (auto or manual)")
+    @app_commands.describe(
+        mode="Auto (latest submission) or Manual (paste code).",
+        leetcode_user="LeetCode username"
+    )
+    @app_commands.choices(mode=LEET_MODE_CHOICES)
+    async def leetcode(
+        self,
+        itx: discord.Interaction,
+        mode: app_commands.Choice[str] | None = None,
+        leetcode_user: str | None = None,
+    ):
+        chosen_mode = mode.value if mode else None
+
+        attempt_auto = False
+        effective_user = leetcode_user 
+
+        if chosen_mode == "auto":
+            attempt_auto = True
+            if not effective_user: 
+                effective_user = dbfuncs.get_leetcode_from_discord(itx.user.name)
+        elif chosen_mode is None:
+            if not effective_user:
+                effective_user = dbfuncs.get_leetcode_from_discord(itx.user.name)
+
+            if effective_user:
+                attempt_auto = True
+
+        # --- Auto Path ---
+        if attempt_auto:
+            if not effective_user:
+                await itx.response.send_message(
+                    "Auto mode requires a LeetCode username. Link your account using `/register` or provide the `leetcode_user` option.",
+                    ephemeral=True
+                )
+                return 
+
+            await itx.response.defer(thinking=True)
+            
+            async with aiohttp.ClientSession() as sess:
+                try:
+                    recent_url = f"https://leetcode.server.rakibshahid.com/{effective_user}/acSubmission"
+                    data = await fetch_json(sess, recent_url)
+                    if not data.get("submission"):
+                        raise RuntimeError("No recent accepted submissions found.")
+
+                    latest = max(data["submission"], key=lambda x: int(x["timestamp"]))
+                    sub_id   = latest["id"]
+                    lang_raw = latest["lang"]
+
+                    scrape_url = f"https://leetcode.server.rakibshahid.com/api/scrapeSubmission/{sub_id}"
+                    code_json  = await fetch_json(sess, scrape_url)
+                    code_text  = code_json["code"]
+
+                except aiohttp.ClientResponseError as e:
+                     await itx.followup.send(f"Failed to fetch submission for `{effective_user}`.", ephemeral=True)
+                     return
+                except Exception as e:
+                    await itx.followup.send(f"Failed to fetch submission for `{effective_user}`: `{e}`", ephemeral=True)
+                    traceback.print_exc()
+                    return
+
+            language = self.normalize_language(lang_raw)
+            problem_url = f"https://leetcode.com/problems/{latest['titleSlug']}/"
+
+            await self.handle_solution(itx, language, code_text, problem_url)
+
+            return
+
+        # --- Manual Path ---
+        if not itx.response.is_done():
+             await itx.response.send_message(
+                 "Select the programming language for your LeetCode solution:",
+                 view=LanguageSelectView(self),
+                 ephemeral=True,
+             )
+        else:
+             await itx.followup.send(
+                 "Couldn't do Auto mode. Please select the language for manual:",
+                 view=LanguageSelectView(self),
+                 ephemeral=True,
+             )
 
     @commands.Cog.listener()
     async def on_ready(self): 
         print("Leetcode Solution cog loaded")
 
-    @app_commands.command(name="leetcode", description="Format your LeetCode Solution")
-    async def open_language_select(self, interaction: discord.Interaction):
-        await interaction.response.send_message(
-            "Select the programming language for your LeetCode solution:",
-            view=LanguageSelectView(self),
-            ephemeral=True
-        )
-        
+    # --------------------------- Complexity Analysis --------------------------- #
     async def get_complexity(self, code, memory=False):
         api_key = config.GOOGLE_GEMINI_KEY
         client = genai.Client(api_key=api_key)
@@ -198,7 +291,8 @@ class LeetcodeSolution(commands.Cog):
             return None
 
     async def handle_solution(self, interaction, language, code, url):
-        await interaction.response.defer(thinking=True) 
+        if not interaction.response.is_done():  
+            await interaction.response.defer(thinking=True) 
         author = interaction.user.mention
 
         url = self.sanitize_url(url)
@@ -239,6 +333,7 @@ class LeetcodeSolution(commands.Cog):
             file = discord.File(io.StringIO(code), filename=filename)
             await interaction.followup.send(f"{display_title}\n\nSolution attached:", file=file)
 
+    # --------------------------- Helper Functions Part 2--------------------------- #
     def _extract_title(self, link):
         for pat in (r"leetcode\.(?:com|cn)/problems/([^/]+)", r"leetcode(?:-cn)?\.(?:com|cn)/contest/[^/]+/problems/([^/]+)"):
             if (m := re.search(pat, link)):
@@ -256,7 +351,7 @@ class LeetcodeSolution(commands.Cog):
             "scala": "scala", "dart": "dart", "r": "r", "sql": "sql", "bash": "sh"
         }.get(lang, "txt")
     
-    def is_valid_leetcode_link(self, url):
+    def is_valid_leetcode_submission_link(self, url):
         try:
             if not validators.url(url):
                 return False
