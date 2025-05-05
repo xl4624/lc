@@ -15,4 +15,4 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           leetcode-email: ${{ secrets.LEETCODE_EMAIL }}
-          leetcode-password: ${{ secrets.LEET
+          leetcode-password: ${{ secrets.LEETCODE_PASSWORD }}
