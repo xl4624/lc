@@ -5,7 +5,7 @@ import discord
 from discord.ext import commands
 from discord import app_commands, ui
 import config
-import genai
+from google import genai
 import re, io
 import urllib.parse
 import validators
@@ -13,13 +13,11 @@ import requests
 
 import lib.dbfuncs as dbfuncs
 
-# --------------------------- Helper Functions --------------------------- #
 async def fetch_json(session: aiohttp.ClientSession, url: str):
     async with session.get(url, timeout=10) as r:
         r.raise_for_status()
         return await r.json()
     
-# --------------------------- UI Elements --------------------------- #
 class LanguageSelect(ui.Select):
     def __init__(self, parent_cog: "LeetcodeSolution"):
         self.parent_cog = parent_cog
@@ -74,15 +72,16 @@ class CodeModal(ui.Modal, title="Paste your solution"):
                 ephemeral=True
             )
             return
+        question_url = self.submission_url.value
+        if 'submissions' in question_url:
+            question_url = question_url[:question_url.index('submissions')]
         
         await self.parent_cog.handle_solution(
             interaction,
             self.language,
             self.code.value,
-            self.submission_url.value,
+            question_url,
         )
-
-# --------------------------- Main Cog --------------------------- #
 
 class LeetcodeSolution(commands.Cog):  
       
@@ -90,27 +89,14 @@ class LeetcodeSolution(commands.Cog):
         self.bot = bot
         
         self.language_map = {
-            # Python variants
             "python": "python", "py": "python", "python3": "python", 
             "python2": "python", "py3": "python", "py2": "python",
-            
-            # JavaScript variants
             "javascript": "javascript", "js": "javascript", "node": "javascript",
             "nodejs": "javascript",
-            
-            # TypeScript
             "typescript": "typescript", "ts": "typescript",
-            
-            # Java
             "java": "java",
-            
-            # C/C++ variants
             "c": "c", "c++": "cpp", "cpp": "cpp", "cplusplus": "cpp",
-            
-            # C#
             "c#": "csharp", "csharp": "csharp", "cs": "csharp",
-            
-            # Other languages
             "go": "go", "golang": "go",
             "ruby": "ruby", "rb": "ruby",
             "rust": "rust", "rs": "rust",
@@ -121,10 +107,8 @@ class LeetcodeSolution(commands.Cog):
             "dart": "dart",
             "r": "r",
             "sql": "sql",
-            # "bash": "bash", "shell": "bash", # dumb ahh
         }
-        
-        # Languages that use || for logical OR
+
         self.languages_with_or_operator = {
             "java", "c", "cpp", "csharp", "javascript", "typescript", 
             "php", "swift", "kotlin", "dart", "rust", "go"
@@ -135,7 +119,7 @@ class LeetcodeSolution(commands.Cog):
             "leetcode.cn",
             "leetcode-cn.com"
         ]
-    # --------------------------- Slash Commands --------------------------- #
+
     LEET_MODE_CHOICES = [
     app_commands.Choice(name="Auto (latest submission)", value="auto"),
     app_commands.Choice(name="Manual (paste code)", value="manual"),
@@ -144,32 +128,25 @@ class LeetcodeSolution(commands.Cog):
     @app_commands.command(name="leetcode", description="Share a LeetCode solution (auto or manual)")
     @app_commands.describe(
         mode="Auto (latest submission) or Manual (paste code).",
-        leetcode_user="LeetCode username"
     )
     @app_commands.choices(mode=LEET_MODE_CHOICES)
     async def leetcode(
         self,
         itx: discord.Interaction,
         mode: app_commands.Choice[str] | None = None,
-        leetcode_user: str | None = None,
     ):
         chosen_mode = mode.value if mode else None
 
         attempt_auto = False
-        effective_user = leetcode_user 
+        effective_user = dbfuncs.get_leetcode_from_discord(itx.user.name)
 
         if chosen_mode == "auto":
             attempt_auto = True
-            if not effective_user: 
-                effective_user = dbfuncs.get_leetcode_from_discord(itx.user.name)
-        elif chosen_mode is None:
-            if not effective_user:
-                effective_user = dbfuncs.get_leetcode_from_discord(itx.user.name)
 
+        elif chosen_mode is None:
             if effective_user:
                 attempt_auto = True
 
-        # --- Auto Path ---
         if attempt_auto:
             if not effective_user:
                 await itx.response.send_message(
@@ -210,7 +187,6 @@ class LeetcodeSolution(commands.Cog):
 
             return
 
-        # --- Manual Path ---
         if not itx.response.is_done():
              await itx.response.send_message(
                  "Select the programming language for your LeetCode solution:",
@@ -228,7 +204,6 @@ class LeetcodeSolution(commands.Cog):
     async def on_ready(self): 
         print("Leetcode Solution cog loaded")
 
-    # --------------------------- Complexity Analysis --------------------------- #
     async def get_complexity(self, code, memory=False):
         api_key = config.GOOGLE_GEMINI_KEY
         client = genai.Client(api_key=api_key)
@@ -333,7 +308,6 @@ class LeetcodeSolution(commands.Cog):
             file = discord.File(io.StringIO(code), filename=filename)
             await interaction.followup.send(f"{display_title}\n\nSolution attached:", file=file)
 
-    # --------------------------- Helper Functions Part 2--------------------------- #
     def _extract_title(self, link):
         for pat in (r"leetcode\.(?:com|cn)/problems/([^/]+)", r"leetcode(?:-cn)?\.(?:com|cn)/contest/[^/]+/problems/([^/]+)"):
             if (m := re.search(pat, link)):
