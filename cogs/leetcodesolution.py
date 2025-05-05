@@ -1,4 +1,5 @@
 import json
+import aiohttp
 import traceback
 import discord
 from discord.ext import commands
@@ -10,14 +11,23 @@ import urllib.parse
 import validators
 import requests
 
+import lib.dbfuncs as dbfuncs
+
+async def fetch_json(session: aiohttp.ClientSession, url: str):
+    async with session.get(url, timeout=10) as r:
+        r.raise_for_status()
+        return await r.json()
+    
 class LanguageSelect(ui.Select):
     def __init__(self, parent_cog: "LeetcodeSolution"):
         self.parent_cog = parent_cog
         
-        unique_languages = sorted(set(parent_cog.language_map.values()))
+        code_order = ['python', 'java', 'c++', 'javascript', 'rust', 'c#', 'go', 'ruby', 'c', 'sql', 'typescript', 'swift', 'kotlin', 
+                           'scala', 'dart', 'php', 'erlang', 'elixir']
+
         options = [
-            discord.SelectOption(label=lang) 
-            for lang in unique_languages
+            discord.SelectOption(label=lang.capitalize()) 
+            for lang in code_order
         ]
         
         super().__init__(
@@ -33,7 +43,7 @@ class LanguageSelect(ui.Select):
 
 class LanguageSelectView(ui.View):
     def __init__(self, parent_cog: "LeetcodeSolution"):
-        super().__init__(timeout=300)  # 5 minute timeout
+        super().__init__(timeout=60)  # 1 minute timeout
         self.add_item(LanguageSelect(parent_cog))
 
 
@@ -46,9 +56,9 @@ class CodeModal(ui.Modal, title="Paste your solution"):
             return daily_url
         except:
             return "https://leetcode.com/problems/two-sum"
-        
+    
+    submission_url = ui.TextInput(label="leetcode submission link", placeholder=get_daily_url())
     code = ui.TextInput(label="solution code", style=discord.TextStyle.paragraph)      
-    question_url = ui.TextInput(label="leetcode link", placeholder=get_daily_url())
     
     def __init__(self, parent_cog: "LeetcodeSolution", language: str):
         super().__init__()
@@ -56,47 +66,37 @@ class CodeModal(ui.Modal, title="Paste your solution"):
         self.language = language
 
     async def on_submit(self, interaction: discord.Interaction):
-        if not self.parent_cog.is_valid_leetcode_link(self.question_url.value):
+        if not self.parent_cog.is_valid_leetcode_submission_link(self.submission_url.value):
             await interaction.response.send_message(
                 "⚠️ Invalid LeetCode URL. Please provide a valid LeetCode problem link.",
                 ephemeral=True
             )
             return
+        question_url = self.submission_url.value
+        if 'submissions' in question_url:
+            question_url = question_url[:question_url.index('submissions')]
         
         await self.parent_cog.handle_solution(
             interaction,
             self.language,
             self.code.value,
-            self.question_url.value,
+            question_url,
         )
 
-
-class LeetcodeSolution(commands.Cog):    
+class LeetcodeSolution(commands.Cog):  
+      
     def __init__(self, bot): 
         self.bot = bot
         
         self.language_map = {
-            # Python variants
             "python": "python", "py": "python", "python3": "python", 
             "python2": "python", "py3": "python", "py2": "python",
-            
-            # JavaScript variants
             "javascript": "javascript", "js": "javascript", "node": "javascript",
             "nodejs": "javascript",
-            
-            # TypeScript
             "typescript": "typescript", "ts": "typescript",
-            
-            # Java
             "java": "java",
-            
-            # C/C++ variants
             "c": "c", "c++": "cpp", "cpp": "cpp", "cplusplus": "cpp",
-            
-            # C#
             "c#": "csharp", "csharp": "csharp", "cs": "csharp",
-            
-            # Other languages
             "go": "go", "golang": "go",
             "ruby": "ruby", "rb": "ruby",
             "rust": "rust", "rs": "rust",
@@ -107,10 +107,8 @@ class LeetcodeSolution(commands.Cog):
             "dart": "dart",
             "r": "r",
             "sql": "sql",
-            # "bash": "bash", "shell": "bash", # dumb ahh
         }
-        
-        # Languages that use || for logical OR
+
         self.languages_with_or_operator = {
             "java", "c", "cpp", "csharp", "javascript", "typescript", 
             "php", "swift", "kotlin", "dart", "rust", "go"
@@ -122,18 +120,90 @@ class LeetcodeSolution(commands.Cog):
             "leetcode-cn.com"
         ]
 
+    LEET_MODE_CHOICES = [
+    app_commands.Choice(name="Auto (latest submission)", value="auto"),
+    app_commands.Choice(name="Manual (paste code)", value="manual"),
+    ]
+
+    @app_commands.command(name="leetcode", description="Share a LeetCode solution (auto or manual)")
+    @app_commands.describe(
+        mode="Auto (latest submission) or Manual (paste code).",
+    )
+    @app_commands.choices(mode=LEET_MODE_CHOICES)
+    async def leetcode(
+        self,
+        itx: discord.Interaction,
+        mode: app_commands.Choice[str] | None = None,
+    ):
+        chosen_mode = mode.value if mode else None
+
+        attempt_auto = False
+        effective_user = dbfuncs.get_leetcode_from_discord(itx.user.name)
+
+        if chosen_mode == "auto":
+            attempt_auto = True
+
+        elif chosen_mode is None:
+            if effective_user:
+                attempt_auto = True
+
+        if attempt_auto:
+            if not effective_user:
+                await itx.response.send_message(
+                    "Auto mode requires a LeetCode username. Link your account using `/register` or provide the `leetcode_user` option.",
+                    ephemeral=True
+                )
+                return 
+
+            await itx.response.defer(thinking=True)
+            
+            async with aiohttp.ClientSession() as sess:
+                try:
+                    recent_url = f"https://leetcode.server.rakibshahid.com/{effective_user}/acSubmission"
+                    data = await fetch_json(sess, recent_url)
+                    if not data.get("submission"):
+                        raise RuntimeError("No recent accepted submissions found.")
+
+                    latest = max(data["submission"], key=lambda x: int(x["timestamp"]))
+                    sub_id   = latest["id"]
+                    lang_raw = latest["lang"]
+
+                    scrape_url = f"https://leetcode.server.rakibshahid.com/api/scrapeSubmission/{sub_id}"
+                    code_json  = await fetch_json(sess, scrape_url)
+                    code_text  = code_json["code"]
+
+                except aiohttp.ClientResponseError as e:
+                     await itx.followup.send(f"Failed to fetch submission for `{effective_user}`.", ephemeral=True)
+                     return
+                except Exception as e:
+                    await itx.followup.send(f"Failed to fetch submission for `{effective_user}`: `{e}`", ephemeral=True)
+                    traceback.print_exc()
+                    return
+
+            language = self.normalize_language(lang_raw)
+            problem_url = f"https://leetcode.com/problems/{latest['titleSlug']}/"
+
+            await self.handle_solution(itx, language, code_text, problem_url)
+
+            return
+
+        if not itx.response.is_done():
+             await itx.response.send_message(
+                 "Select the programming language for your LeetCode solution:",
+                 view=LanguageSelectView(self),
+                 ephemeral=True,
+             )
+        else:
+             await itx.followup.send(
+                 "Couldn't do Auto mode. Please select the language for manual:",
+                 view=LanguageSelectView(self),
+                 ephemeral=True,
+             )
+
     @commands.Cog.listener()
     async def on_ready(self): 
         print("Leetcode Solution cog loaded")
 
-    @app_commands.command(name="leetcode", description="Format your LeetCode Solution")
-    async def open_language_select(self, interaction: discord.Interaction):
-        await interaction.response.send_message(
-            "Select the programming language for your LeetCode solution:",
-            view=LanguageSelectView(self),
-            ephemeral=True
-        )
-        
     async def get_complexity(self, code, memory=False):
         api_key = config.GOOGLE_GEMINI_KEY
         client = genai.Client(api_key=api_key)
@@ -196,7 +266,8 @@ class LeetcodeSolution(commands.Cog):
             return None
 
     async def handle_solution(self, interaction, language, code, url):
-        await interaction.response.defer(thinking=True) 
+        if not interaction.response.is_done():  
+            await interaction.response.defer(thinking=True) 
         author = interaction.user.mention
 
         url = self.sanitize_url(url)
@@ -254,7 +325,7 @@ class LeetcodeSolution(commands.Cog):
             "scala": "scala", "dart": "dart", "r": "r", "sql": "sql", "bash": "sh"
         }.get(lang, "txt")
     
-    def is_valid_leetcode_link(self, url):
+    def is_valid_leetcode_submission_link(self, url):
         try:
             if not validators.url(url):
                 return False
