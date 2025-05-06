@@ -12,6 +12,7 @@ import validators
 import requests
 
 import lib.dbfuncs as dbfuncs
+from lib.dbfuncs import track_queries
 
 async def fetch_json(session: aiohttp.ClientSession, url: str):
     async with session.get(url, timeout=10) as r:
@@ -130,6 +131,7 @@ class LeetcodeSolution(commands.Cog):
         mode="Auto (latest submission) or Manual (paste code).",
     )
     @app_commands.choices(mode=LEET_MODE_CHOICES)
+    @track_queries
     async def leetcode(
         self,
         itx: discord.Interaction,

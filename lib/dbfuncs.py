@@ -50,30 +50,34 @@ def track_queries(func):
 
 @with_db
 def update_query_count(cursor,discord_id,discord_user):
-    cursor.execute(
-        "SELECT leetcode_username FROM account_owner WHERE LOWER(discord_username) = LOWER(%s);",
-        (discord_user,),
-    )
-    leetcode_username = cursor.fetchone()[0]
-    cursor.execute(
-        "SELECT id FROM users WHERE LOWER(username) = LOWER(%s);",
-        (leetcode_username,),
-    )
-    user_id = cursor.fetchone()[0]
-    cursor.execute(
-        "SELECT * FROM queries WHERE user_id = %s;",
-        (user_id,),
-    )
-    if cursor.fetchone():
+    try:
         cursor.execute(
-            "UPDATE queries SET queries = queries + 1 WHERE user_id = %s;",
+            "SELECT leetcode_username FROM account_owner WHERE LOWER(discord_username) = LOWER(%s);",
+            (discord_user,),
+        )
+        leetcode_username = cursor.fetchone()[0]
+        cursor.execute(
+            "SELECT id FROM users WHERE LOWER(username) = LOWER(%s);",
+            (leetcode_username,),
+        )
+        user_id = cursor.fetchone()[0]
+        cursor.execute(
+            "SELECT * FROM queries WHERE user_id = %s;",
             (user_id,),
         )
-    else:
-        cursor.execute(
-            "INSERT INTO queries (user_id, discord_id,queries) VALUES (%s, %s, %s);",
-            (user_id, str(discord_id), 1),
+        if cursor.fetchone():
+            cursor.execute(
+                "UPDATE queries SET queries = queries + 1 WHERE user_id = %s;",
+                (user_id,),
+            )
+        else:
+            cursor.execute(
+                "INSERT INTO queries (user_id, discord_id,queries) VALUES (%s, %s, %s);",
+                (user_id, str(discord_id), 1),
         )   
+    except Exception as e:
+        print("[TRACKING]: Error tracking! See error")
+        traceback.print_exc()
 
 @with_db
 def check_leetcode_user(cursor, leetcode_username):
