@@ -237,7 +237,7 @@ class LeetcodeSolution(commands.Cog):
         Return only a valid JSON object, like:
 
         {{
-        "memory_complexity": "O(...)",
+        "mem_complexity": "O(...)",
         "time_complexity": "O(...)"
         }}
 
@@ -286,7 +286,7 @@ class LeetcodeSolution(commands.Cog):
             print("[TC]: Failed to get time comp! See error:")
             traceback.print_exc()
 
-        if complexity and complexity.get("time_complexity","unknown") != "unknown" and complexity.get("mem_complexity","unknown") != "unknown":
+        if complexity and complexity.get("time_complexity", "unknown") != "unknown" and complexity.get("mem_complexity", "unknown") != "unknown":
             tc = complexity["time_complexity"].replace('_','\\_').replace('*','\\*')
             mc = complexity["mem_complexity"].replace('_','\\_').replace('*','\\*')
             display_title += f'Time Complexity: ||{tc}||\nMemory Complexity: ||{mc}||'
