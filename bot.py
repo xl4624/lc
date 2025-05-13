@@ -3,6 +3,7 @@ import config
 import os
 import asyncio
 from discord.ext import commands
+from pathlib import Path
 
 ########################################
 intents = discord.Intents.default()
@@ -21,9 +22,8 @@ async def on_ready():
 
 @bot.event
 async def load():
-    for file in os.listdir("/home/rakib/lcleaderboard/lc-leaderboard-bot/cogs"):
-        if file.endswith(".py"):
-            await bot.load_extension(f"cogs.{file[:-3]}")
+    for file in Path(__file__).parent.glob("cogs/*.py"):
+        await bot.load_extension(f"cogs.{file.name[:-3]}")
 
 
 async def main():
